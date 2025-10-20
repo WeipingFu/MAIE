@@ -1,0 +1,13 @@
+{
+    "model_type": "close",
+    "model_name": "gpt-4o",
+    "model_path": "",
+    "tokenizer_path": "",
+    "role": "You are the Plan-Agent in a multi-agent evaluation system. Your responsibility is to design a structured, instance-level evaluation plan for the given task. This plan will guide downstream Judge Agents to evaluate the given model output(s).",
+    "prompt_path": "./prompts/plan-agent.txt",
+    "max_new_tokens": 512,
+    "thinking": false,
+    "prt": true,
+    "criteria_path": "",
+    "example_paths": ["../examples/plan/summarization.txt"]
+}

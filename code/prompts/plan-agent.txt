@@ -1,0 +1,101 @@
+[You Will Receive]
+- A generation task Description.
+- evaluation mode (pointwise or pairwise).
+- A model output (for point-wise evaluation) or two model outputs (for pairwise evaluation).
+- Optionally, user-provided evaluation criteria (dimensions and scoring guidelines).
+
+
+
+[Your Goals]
+1. Task Identification: Identify the specific task type (e.g., Writing, Reasoning, Coding, Math, Dialogue, etc.).
+
+2. Evaluation Plan Construction: Generate a specific, verifiable, and complete instance-level evaluation plan that adapts to the specific task and model output(s).
+Follow steps:
+    (1) Evaluation Criteria Design:
+        - If evaluation criteria are provided, follow the user-provided criteria;
+        - If no criteria are provided, design suitable evaluation criteria based on the task and model output(s), which includes evaluation dimensions, their scoring scales, and the high/low score indicators, etc.
+    (2) Agent Assignment: For each evaluation dimension, define:
+        - The role of the Judge Agent;
+        - The evaluation task the agent must perform
+        - Step-by-step evaluation instructions
+    (3) Dependency Identification: Since evaluation dimensions can influence each other, clearly defining the dependencies between them allows Judge Agents to reference and integrate the perspectives of related agents into their own judgments.
+
+3. Output Formatting: Structure your output strictly as JSON format.
+
+
+
+[Key Principles]
+- Instance-level: Evaluation plan must be specific and tailored for this instance, not only the task type.
+- Verifiable: Each dimension must be measurable and executable by a Judge Agent. The evaluation plan must be practical and executable.
+- Completeness: Include evaluation dimensions, their scoring standards, and per-dimension Judge Agent instructions. Ensure all key dimensions of this instance are covered.
+- Structured: Output must be strictly follow the required JSON schema, ready for downstream use.
+
+
+
+[Required JSON Schema (strict)]
+{
+  "task_type": "",
+  "evaluation_dimensions": [
+    {
+      "name": "",
+      "definition": "",
+      "rationale": "",
+      "weight": "",                      // decimal between 0-1, sum=1, e.g., 0.5
+      "scoring_scale": "",               // e.g., "1-5", "0-100", or "binary preference" for pairwise evaluation
+      "high_score_indicator": "",
+      "low_score_indicator": "",
+      "dependencies": [""],              // optional list of related dimension names
+      "assigned_agent": {
+        "role_name": "",
+        "role_description": "",          // what this agent is responsible for
+        "evaluation_task": "",           // concise description of what this agent must judge
+        "evaluation_steps": [            // concrete steps the agent must perform
+          "Step 1: ...",
+          "Step 2: ...",
+          "Step 3: ..."
+        ]
+      }
+    },
+    ...
+  ],
+  "evaluation_graph": {                 // relationships between dimensions
+    "nodes": ["dimension names"],
+    "edges": [
+      {"from": "", "to": "},
+      ...
+    ]
+  },
+}
+
+
+
+[Output Constraints]
+- Output must be valid JSON, with no extra text or comments.
+- The evaluation plan must be actionable (usable directly by downstream Judge Agents).
+- Use clear, verifiable criteria and specific agent procedures instead of vague guidance.
+
+
+
+#examples
+
+
+
+[Start of User Input]
+[Generation Task Description]
+#task_description
+
+
+[Evaluation Mode]
+#evaluation_mode
+
+
+[Model Output]
+#model_output
+
+
+#criteria
+[End of User Input]
+
+
+
+Please output your evaluation plan in JSON format.

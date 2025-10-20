@@ -1,0 +1,82 @@
+{
+    "task_type": "writing",
+    "evaluation_dimensions": [
+      {
+        "name": "Fluency and Coherence",
+        "definition": "Compare writing fluency, grammar, and logical flow of the two summaries.",
+        "rationale": "A fluent and coherent summary improves readability and comprehension.",
+        "weight": 0.2,
+        "scoring_scale": "binary preference",
+        "high_score_indicator": "The preferred summary is smoother, grammatically correct, and logically organized.",
+        "low_score_indicator": "The disfavored summary contains awkward phrasing or unclear structure.",
+        "dependencies": [],
+        "assigned_agent": {
+          "role_name": "Language Judge",
+          "role_description": "Evaluate which summary reads more fluently and coherently.",
+          "evaluation_task": "Compare grammatical correctness, sentence flow, and logical structure between the two summaries.",
+          "evaluation_steps": [
+            "Step 1: Read both summaries carefully.",
+            "Step 2: Identify grammatical or stylistic errors in each.",
+            "Step 3: Evaluate clarity and logical transitions.",
+            "Step 4: Choose which summary has better fluency, or mark as Tie.",
+            "Step 5: Provide a short rationale."
+          ]
+        }
+      },
+      {
+        "name": "Content Coverage",
+        "definition": "Compare which summary better covers the key information in the source context, including both benefits and concerns of AI across industries.",
+        "rationale": "A high-quality summary should fully represent essential ideas such as AI's applications, benefits, and risks.",
+        "weight": 0.4,
+        "scoring_scale": "binary preference",               
+        "high_score_indicator": "The preferred summary includes more key points with balanced detail and completeness.",
+        "low_score_indicator": "The disfavored summary omits or distorts key points from the source context.",
+        "dependencies": ["Factual Consistency"],
+        "assigned_agent": {
+          "role_name": "Content Judge",
+          "role_description": "Compare the two summaries based on how well they capture the essential ideas of the source text.",
+          "evaluation_task": "Determine which summary provides more comprehensive and balanced coverage of the context.",
+          "evaluation_steps": [
+            "Step 1: Identify key ideas in the context (industries affected, benefits, and concerns).",
+            "Step 2: Check which of the two summaries includes more of these key points with proper emphasis.",
+            "Step 3: Evaluate balance between benefits and concerns.",
+            "Step 4: Decide which model's output better covers the content, or mark as Tie if equal.",
+            "Step 5: Provide a short textual rationale."
+          ]
+        }
+      },
+      {
+        "name": "Factual Consistency",
+        "definition": "Compare factual alignment of the two summaries against the source text.",
+        "rationale": "An accurate summary should not introduce errors or alter the meaning of the original content.",
+        "weight": 0.4,
+        "scoring_scale": "binary preference",
+        "high_score_indicator": "The preferred summary accurately reflects facts and relationships from the context.",
+        "low_score_indicator": "The disfavored summary contains factual inaccuracies or unsupported claims.",
+        "dependencies": ["Content Coverage"],
+        "assigned_agent": {
+          "role_name": "Factual Judge",
+          "role_description": "Check which summary remains more faithful to the factual content of the source context.",
+          "evaluation_task": "Compare factual correctness between the two summaries and determine which is more accurate.",
+          "evaluation_steps": [
+            "Step 1: Review key points and coverage results from the Content Judge.",
+            "Step 2: Cross-check statements in both summaries with the source context.",
+            "Step 3: Identify any factual errors, distortions, or hallucinations.",
+            "Step 4: Decide which summary is more factually consistent, or mark as Tie.",
+            "Step 5: Write a concise explanation citing evidence."
+          ]
+        }
+      }
+    ],
+    "evaluation_graph": {
+      "nodes": [
+        "Fluency and Coherence",
+        "Content Coverage",
+        "Factual Consistency"
+      ],
+      "edges": [
+        {"from": "Content Coverage", "to": "Factual Consistency"},
+        {"from": "Factual Consistency", "to": "Content Coverage"}
+      ]
+    }
+}
