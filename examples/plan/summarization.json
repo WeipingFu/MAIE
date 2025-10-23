@@ -43,7 +43,7 @@
             "Step 1: Identify key ideas in the context (industries affected, benefits, and concerns).",
             "Step 2: Check which of the two summaries includes more of these key points with proper emphasis.",
             "Step 3: Evaluate balance between benefits and concerns.",
-            "Step 4: Decide which model's output better covers the content, or mark as Tie if equal.",
+            "Step 4: Decide which model's response better covers the content, or mark as Tie if equal.",
             "Step 5: Provide a short textual rationale."
           ]
         }

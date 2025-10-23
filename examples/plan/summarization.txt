@@ -8,11 +8,11 @@ Artificial intelligence (AI) is transforming many industries, from healthcare to
 pairwise
 
 
-[Model Output]
-[The Output of Model 1]
+[Model Response]
+[Response 1]
 AI is changing industries such as healthcare and finance by improving diagnosis and detecting fraud. Yet, it also causes privacy and job concerns. Governments are working on responsible AI regulations.
 
-[The Output of Model 2]
+[Response 2]
 AI helps many industries. It can be dangerous and might replace jobs. Healthcare and finance are some examples, and people want laws for AI.
 
 
@@ -62,7 +62,7 @@ AI helps many industries. It can be dangerous and might replace jobs. Healthcare
           "Step 1: Identify key ideas in the context (industries affected, benefits, and concerns).",
           "Step 2: Check which of the two summaries includes more of these key points with proper emphasis.",
           "Step 3: Evaluate balance between benefits and concerns.",
-          "Step 4: Decide which model's output better covers the content, or mark as Tie if equal.",
+          "Step 4: Decide which response better covers the content, or mark as Tie if equal.",
           "Step 5: Provide a short textual rationale."
         ]
       }

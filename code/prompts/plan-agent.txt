@@ -1,7 +1,7 @@
 [You Will Receive]
 - A generation task Description.
 - evaluation mode (pointwise or pairwise).
-- A model output (for point-wise evaluation) or two model outputs (for pairwise evaluation).
+- A model response (for point-wise evaluation) or two model responses (for pairwise evaluation).
 - Optionally, user-provided evaluation criteria (dimensions and scoring guidelines).
 
 
@@ -9,7 +9,7 @@
 [Your Goals]
 1. Task Identification: Identify the specific task type (e.g., Writing, Reasoning, Coding, Math, Dialogue, etc.).
 
-2. Evaluation Plan Construction: Generate a specific, verifiable, and complete instance-level evaluation plan that adapts to the specific task and model output(s).
+2. Evaluation Plan Construction: Generate a specific, verifiable, and complete instance-level evaluation plan that adapts to the specific task and model response(s).
 Follow steps:
     (1) Evaluation Criteria Design:
         - If evaluation criteria are provided, follow the user-provided criteria;
@@ -91,8 +91,8 @@ Follow steps:
 #evaluation_mode
 
 
-[Model Output]
-#model_output
+[Model Response]
+#model_response
 
 
 #criteria

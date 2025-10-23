@@ -2,8 +2,8 @@
 - Evaluation Dimension and Task: The name of dimension to be evaluated and your task.
 - Evaluation Mode: "point-wise" or "pairwise".
 - Scoring scale and the indicators of high/low scores.
-- Generation task and a model output (for point-wise evaluation) or two model outputs (for pairwise evaluation).
-- Evaluation Granularity: The scope and depth of the evaluation. "holistic" - Judges the output as a whole; "localized" - focuses on specific portions or elements of the output; "stepwise" - evaluates each reasoning or generation step individually.
+- Generation task and a model response (for point-wise evaluation) or two model responses (for pairwise evaluation).
+- Evaluation Granularity: The scope and depth of the evaluation. "holistic" - Judges the response as a whole; "localized" - focuses on specific portions or elements of the response; "stepwise" - evaluates each reasoning or generation step individually.
 - Evaluation Steps: Step-by-step guidance on how to conduct the evaluation.
 
 
@@ -62,8 +62,8 @@ Low Score Indicator: #low_score_indicator
 #gen_task
 
 
-[Model Output]
-#model_output
+[Model Response]
+#model_response
 
 
 [Evaluation Granularity]
