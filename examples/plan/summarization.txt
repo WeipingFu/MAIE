@@ -19,12 +19,14 @@ AI helps many industries. It can be dangerous and might replace jobs. Healthcare
 [Evaluation Plan]
 {
   "task_type": "writing",
+  "sub_task": "summarization",
   "evaluation_dimensions": [
     {
       "name": "Fluency and Coherence",
       "definition": "Compare writing fluency, grammar, and logical flow of the two summaries.",
       "rationale": "A fluent and coherent summary improves readability and comprehension.",
       "weight": 0.2,
+      "evaluation_granularity": "holistic",
       "scoring_scale": "binary preference",
       "high_score_indicator": "The preferred summary is smoother, grammatically correct, and logically organized.",
       "low_score_indicator": "The disfavored summary contains awkward phrasing or unclear structure.",
@@ -47,6 +49,7 @@ AI helps many industries. It can be dangerous and might replace jobs. Healthcare
       "definition": "Compare which summary better covers the key information in the source context, including both benefits and concerns of AI across industries.",
       "rationale": "A high-quality summary should fully represent essential ideas such as AI's applications, benefits, and risks.",
       "weight": 0.4,
+      "evaluation_granularity": "holistic",
       "scoring_scale": "binary preference",               
       "high_score_indicator": "The preferred summary includes more key points with balanced detail and completeness.",
       "low_score_indicator": "The disfavored summary omits or distorts key points from the source context.",
@@ -69,6 +72,7 @@ AI helps many industries. It can be dangerous and might replace jobs. Healthcare
       "definition": "Compare factual alignment of the two summaries against the source text.",
       "rationale": "An accurate summary should not introduce errors or alter the meaning of the original content.",
       "weight": 0.4,
+      "evaluation_granularity": "localized",
       "scoring_scale": "binary preference",
       "high_score_indicator": "The preferred summary accurately reflects facts and relationships from the context.",
       "low_score_indicator": "The disfavored summary contains factual inaccuracies or unsupported claims.",

@@ -22,7 +22,7 @@ class JudgeAgent(Agent):
         example_str = '\n\n'.join(['[Start of Example {}]\n{}\n[End of Example {}]'.format(i+1, ex, i+1) for i,ex in enumerate(self.examples)])
         # generate prompt
         if round == 1:
-            self.user_prompt = self.prompt_template.replace('#evaluation_dimension', self.params.get("dimension")).replace('#task', self.params.get("task")).replace('#evaluation_mode', eval_mode).replace('#scoring_scale', self.params.get("scoring_scale")).replace('#high_score_indicator', self.params.get("high_score_indicator")).replace('#low_score_indicator', self.params.get("low_score_indicator")).replace('#examples', example_str).replace('#model_output', model_output).replace('#steps', '\n'.join(self.params.get("steps"))).replace('#gen_task', gen_task)
+            self.user_prompt = self.prompt_template.replace('#evaluation_dimension', self.params.get("dimension")).replace('#task', self.params.get("task")).replace('#evaluation_mode', eval_mode).replace('#scoring_scale', self.params.get("scoring_scale")).replace('#high_score_indicator', self.params.get("high_score_indicator")).replace('#low_score_indicator', self.params.get("low_score_indicator")).replace('#examples', example_str).replace('#model_output', model_output).replace('#steps', '\n'.join(self.params.get("steps"))).replace('#gen_task', gen_task).replace('#granularity', self.params.get("granularity"))
         elif round == 2:
             depends = self.params.get('dependencies', [])
             if len(depends) > 0:

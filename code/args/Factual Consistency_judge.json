@@ -1,1 +1,17 @@
-{"prompt_path": "./prompts/judge-r1.txt", "dimension": "Factual Consistency", "scoring_scale": "binary preference", "high_score_indicator": "The preferred summary accurately reflects facts and relationships from the context.", "low_score_indicator": "The disfavored summary contains factual inaccuracies or unsupported claims.", "model_name": "gpt-4o", "model_type": "close", "model_path": "", "tokenizer_path": "", "role_name": "Factual Judge", "role": "Check which summary remains more faithful to the factual content of the source context.", "task": "Compare factual correctness between the two summaries and determine which is more accurate.", "steps": ["Step 1: Review key points and coverage results from the Content Judge.", "Step 2: Cross-check statements in both summaries with the source context.", "Step 3: Identify any factual errors, distortions, or hallucinations.", "Step 4: Decide which summary is more factually consistent, or mark as Tie.", "Step 5: Write a concise explanation citing evidence."], "dependencies": ["Content Coverage"]}
+{
+    "prompt_path": "./prompts/judge-r1.txt", 
+    "dimension": "Factual Consistency", 
+    "scoring_scale": "binary preference", 
+    "high_score_indicator": "The preferred summary accurately reflects facts and relationships from the context.", 
+    "low_score_indicator": "The disfavored summary contains factual inaccuracies or unsupported claims.", 
+    "model_name": "gpt-4o", 
+    "model_type": "close", 
+    "model_path": "", 
+    "tokenizer_path": "", 
+    "role_name": "Factual Judge", 
+    "role": "Check which summary remains more faithful to the factual content of the source context.", 
+    "task": "Compare factual correctness between the two summaries and determine which is more accurate.", 
+    "granularity": "localized", 
+    "steps": ["Step 1: Review key points and coverage results from the Content Judge.", "Step 2: Cross-check statements in both summaries with the source context.", "Step 3: Identify any factual errors, distortions, or hallucinations.", "Step 4: Decide which summary is more factually consistent, or mark as Tie.", "Step 5: Write a concise explanation citing evidence."], 
+    "dependencies": ["Content Coverage"]
+}

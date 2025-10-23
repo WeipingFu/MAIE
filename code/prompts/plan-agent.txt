@@ -35,12 +35,14 @@ Follow steps:
 [Required JSON Schema (strict)]
 {
   "task_type": "",
+  "sub_task": "",
   "evaluation_dimensions": [
     {
       "name": "",
       "definition": "",
       "rationale": "",
       "weight": "",                      // decimal between 0-1, sum=1, e.g., 0.5
+      "evaluation_granularity": "",      // "holistic" | "stepwise" | "localized"
       "scoring_scale": "",               // e.g., "1-5", "0-100", or "binary preference" for pairwise evaluation
       "high_score_indicator": "",
       "low_score_indicator": "",

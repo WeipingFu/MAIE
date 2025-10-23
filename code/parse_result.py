@@ -53,9 +53,10 @@ def parse_evaluation_plan(plan_json: dict, save_dir:str, prompt_path: str = './p
     plan_json
     {
         "task_type": "",
+        "sub_task": "",
         "evaluation_dimensions": [
-            {"name":"", "definition":"", "rationale":"", "weight":0.2, "scoring_scale":"",
-            "high_score_indicator":"", "low_score_indicator":"", "dependencies":[],
+            {"name":"", "definition":"", "rationale":"", "weight":0.2, "evaluation_granularity": "",
+            "scoring_scale":"", "high_score_indicator":"", "low_score_indicator":"", "dependencies":[],
             "assigned_agent":{
                 "role_name":"", "role_description":"", "evaluation_task":"", "evaluation_steps":[]
             }}, ...
@@ -129,6 +130,7 @@ def parse_evaluation_plan(plan_json: dict, save_dir:str, prompt_path: str = './p
             "role_name": dimension["assigned_agent"].get("role_name", f"{dimension['name']} Judge"),
             "role": dimension["assigned_agent"].get("role_description", f"You are a specialized agent to evaluate the '{dimension['name']}' dimension."),
             "task": dimension["assigned_agent"].get("evaluation_task", f"Evaluate the generated content based on the definition: {dimension['definition']}"),
+            "granularity": dimension['evaluation_granularity'],
             "steps": dimension["assigned_agent"].get("evaluation_steps", "1. Read the definition and scoring scale. 2. Compare the content with high/low score indicators. 3. Provide score, rationale, and evidence."),
             "dependencies": dimension['dependencies']
         }

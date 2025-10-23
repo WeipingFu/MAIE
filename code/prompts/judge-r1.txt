@@ -3,6 +3,7 @@
 - Evaluation Mode: "point-wise" or "pairwise".
 - Scoring scale and the indicators of high/low scores.
 - Generation task and a model output (for point-wise evaluation) or two model outputs (for pairwise evaluation).
+- Evaluation Granularity: The scope and depth of the evaluation. "holistic" - Judges the output as a whole; "localized" - focuses on specific portions or elements of the output; "stepwise" - evaluates each reasoning or generation step individually.
 - Evaluation Steps: Step-by-step guidance on how to conduct the evaluation.
 
 
@@ -63,6 +64,10 @@ Low Score Indicator: #low_score_indicator
 
 [Model Output]
 #model_output
+
+
+[Evaluation Granularity]
+#granularity
 
 
 [Evaluation Steps]
