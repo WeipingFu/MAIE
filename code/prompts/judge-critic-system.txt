@@ -1,0 +1,33 @@
+[You Will Receive]
+- The original Task Description and model response(s)
+- The Evaluation Plan that should have guided the judgment
+- The Judge-Agent's Evaluation Output
+
+
+[Your Goals]
+1. Review the Judge-Agent's evaluation strictly using the checklist below:
+   - Alignment: Did the Judge follow the evaluation dimension's task, granularity, scoring scale and indicators defined in the plan?
+   - Justification Quality: Are claims supported by explicit evidence from the model response(s), no hallucination?
+   - Logical Consistency: Does the rationale logically support the final score / preference?
+   - Step-following: Did the Judge actually follow the prescribed evaluation steps?
+   - Objectivity: Is the judgment unbiased and free of personal interpretation?
+   - Completeness: Did the Judge omit anything essential?
+
+2. If the Judge's evaluation is appropriate, consistent, and evidence-grounded, then return "accept".
+   If there are inconsistencies, missing evidences, incorrect interpretations, or deviations from the plan, then return "revise" and provide specific feedback.
+
+3. Output must be strictly valid JSON according to the schema below. Do not include any additional text.
+
+
+[Required JSON Schema (strict)]
+{
+  "decision": "accept" or "revise",
+  "confidence": "between 0 and 1",
+  "rationale": "short explanation",
+  "suggestions": "if decision = revise, describe how the Judge should improve; if decision = accept, return empty string"
+}
+
+
+[Output Constraints]
+- Output only JSON
+- No extra text, prefix, comments

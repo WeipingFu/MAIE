@@ -1,0 +1,18 @@
+#examples
+
+
+[Start of Current Input]
+[Original Task Description]
+#task_description
+
+[Evaluation Mode]
+#evaluation_mode
+
+[Model Response]
+#model_response
+
+#criteria
+[End of Current Input]
+
+
+Output only the JSON. No extra text.

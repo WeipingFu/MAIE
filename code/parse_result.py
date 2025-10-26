@@ -40,7 +40,7 @@ def get_model_score_heuristic(dimension: dict, model_name: str) -> float:
     return final_score
 
 
-def parse_evaluation_plan(plan_json: dict, save_dir:str, prompt_path: str = './prompts/judge-r1.txt', model_type: str = '', strategy: str = "random") -> None:
+def parse_evaluation_plan(plan_json: dict, save_dir:str, system_prompt_path: str = './prompts/judge-r1-system.txt', user_prompt_path: str = './prompts/judge-r1-user.txt', model_type: str = '', strategy: str = "random") -> None:
     """
     Parses the evaluation plan and assigns a Judge model to each dimension 
     based on the specified strategy ('random' or 'heuristic') and model filtering.
@@ -65,7 +65,7 @@ def parse_evaluation_plan(plan_json: dict, save_dir:str, prompt_path: str = './p
     }
     """
    
-    task_type = plan_json.get("task_type", "common")
+    task_type = plan_json.get("task_type", "common").lower()
     eval_dims = plan_json.get("evaluation_dimensions", "")
 
     # 1. Filter available judges by task_type (allows common models for specific tasks)
@@ -117,7 +117,9 @@ def parse_evaluation_plan(plan_json: dict, save_dir:str, prompt_path: str = './p
         dimension = eval_dims[dim_index]
         model_meta = available_judges_meta.get(model_name)
         agent_file = {
-            "prompt_path": prompt_path,
+            "system_prompt_path": system_prompt_path,
+            "user_prompt_path": user_prompt_path,
+            "task_type": task_type,
             "dimension": dimension['name'],
             'definition': dimension['definition'],
             "scoring_scale": dimension['scoring_scale'],
@@ -140,6 +142,6 @@ def parse_evaluation_plan(plan_json: dict, save_dir:str, prompt_path: str = './p
 
 
 if __name__ == "__main__":
-    plan_json = load_json('../examples/plan/summarization.json')
-    save_dir = './args/'
-    parse_evaluation_plan(plan_json, save_dir, strategy='heuristic')
+    plan_json = load_json('../../result/testcase/math-judgebench/plan-0shot-llama3.1.json')
+    save_dir = '../../result/testcase/math-judgebench/'
+    parse_evaluation_plan(plan_json, save_dir, model_type='open', strategy='heuristic')

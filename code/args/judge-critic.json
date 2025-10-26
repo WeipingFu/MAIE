@@ -1,0 +1,12 @@
+{
+    "model_type": "close",
+    "model_name": "gpt-4o",
+    "model_path": "",
+    "tokenizer_path": "",
+    "system_prompt_path": "./prompts/judge-critic-system.txt",
+    "user_prompt_path": "./prompts/judge-critic-user.txt",
+    "max_new_tokens": 512,
+    "thinking": false,
+    "prt": true,
+    "example_paths": []
+}

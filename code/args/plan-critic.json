@@ -3,11 +3,10 @@
     "model_name": "gpt-4o",
     "model_path": "",
     "tokenizer_path": "",
-    "system_prompt_path": "./prompts/plan-system.txt",
-    "user_prompt_path": "./prompts/plan-user.txt",
+    "system_prompt_path": "./prompts/plan-critic.txt",
     "max_new_tokens": 512,
     "thinking": false,
     "prt": true,
     "criteria_path": "",
-    "example_paths": ["../examples/plan/summarization.txt"]
+    "example_paths": []
 }

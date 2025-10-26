@@ -3,10 +3,8 @@ Write a summary for the given context.
 Context:
 Artificial intelligence (AI) is transforming many industries, from healthcare to finance. In healthcare, AI assists doctors in diagnosing diseases faster and more accurately. In finance, AI algorithms detect fraudulent transactions and automate trading. However, experts warn that while AI brings efficiency, it also raises concerns about privacy, job loss, and bias in automated systems. Governments and organizations are now focusing on developing ethical guidelines and regulations for responsible AI use.
 
-
 [Evaluation Mode]
 pairwise
-
 
 [Model Response]
 [Response 1]

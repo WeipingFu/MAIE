@@ -31,10 +31,9 @@ class PlanAgent(Agent):
         # get user criteria
         self.get_user_criteria()
         # get examples
-        self.get_examples()
-        example_str = '\n\n'.join(['[Start of Example {}]\n{}\n[End of Example {}]'.format(i+1, ex, i+1) for i,ex in enumerate(self.examples)])
+        self.get_examplestr()
         # generate prompt
-        self.user_prompt = self.prompt_template.replace('#task_description', task).replace('#evaluation_mode', eval_mode).replace('#model_response', model_response).replace('#criteria', self.user_criteria).replace('#examples', example_str)
+        self.user_prompt = self.prompt_template.replace('#task_description', task).replace('#evaluation_mode', eval_mode).replace('#model_response', model_response).replace('#criteria', self.user_criteria).replace('#examples', self.example_str)
 
     def apply_one(self, task:str, model_responses:list, pre_messages:list = None) -> str:
         self.get_userprompt(task, model_responses)

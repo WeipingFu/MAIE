@@ -1,0 +1,35 @@
+#examples
+
+
+[Start of Current Input]
+[Evaluation Dimension]
+#evaluation_dimension
+
+[Evaluation Task]
+#task
+
+[Evaluation Mode]
+#evaluation_mode
+
+[Scoring Scale]
+#scoring_scale
+
+[Indicators]
+High Score Indicator: #high_score_indicator
+Low Score Indicator: #low_score_indicator
+
+[Original Generation Task]
+#gen_task
+
+[Model Response]
+#model_response
+
+[Evaluation Granularity]
+#granularity
+
+[Evaluation Steps]
+#steps
+[End of Current Input]
+
+
+Output only the JSON. No extra text.
