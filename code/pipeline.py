@@ -6,8 +6,10 @@ from critic import CriticAgent
 from judge import JudgeAgent
 from check_result import validate_plan_json
 from parse_result import parse_evaluation_plan
-from utils import load_json 
+from utils import load_json, save_json, save_jsonl 
 import copy
+from tqdm import tqdm
+import pandas as pd
 
 
 # Generate Plan
@@ -89,7 +91,7 @@ def parse_plan_and_config_judges(plan_json: dict, save_dir: str) -> List[str]:
 
 
 # Run Judge Agents (two turns)
-def run_judge_rounds(task: str, model_responses: List[str], judge_files: List[str]) -> Dict[str, dict]:
+def run_judge_rounds(task: str, model_responses: List[str], judge_files: List[str], rounds: int = 2) -> Dict[str, dict]:
     """
     Perform two rounds of evaluation for each judge agent.
         - First round: Independent evaluation
@@ -106,6 +108,9 @@ def run_judge_rounds(task: str, model_responses: List[str], judge_files: List[st
         judge_agent = JudgeAgent(file_path)
         resp = judge_agent.apply_one(task, model_responses, round=1)
         results_round1[dim_name] = resp
+
+    if rounds < 2:
+        return {"round1": results_round1, "round2": results_round1}
 
     # Turn 2
     for file_path in judge_files:
@@ -150,12 +155,13 @@ def aggregate_final_result(plan_json: dict, judge_results: Dict[str, dict]) -> d
             detailed_scores[name] = {"weight": weight, "score": score}
 
         final_score = total_score / weight_sum if weight_sum > 0 else 0.0
-        return {
-            "evaluation_mode": "pointwise",
-            "final_score": final_score,
-            "judgement": "",  # no winner concept in pointwise
-            "details": detailed_scores
-        }
+        # return {
+        #     "evaluation_mode": "pointwise",
+        #     "final_score": final_score,
+        #     "judgement": "",  # no winner concept in pointwise
+        #     "details": detailed_scores
+        # }
+        return final_score
 
     elif eval_mode == "pairwise":
         response_scores = {"response 1": 0, "response 2": 0}
@@ -188,18 +194,19 @@ def aggregate_final_result(plan_json: dict, judge_results: Dict[str, dict]) -> d
             final_judgement = "Response 1"
         else:
             final_judgement = "Response 2"
-        return {
-            "evaluation_mode": "pairwise",
-            "final_score": response_scores,
-            "judgement": final_judgement,
-            "details": detailed_scores
-        }
+        # return {
+        #     "evaluation_mode": "pairwise",
+        #     "final_score": response_scores,
+        #     "judgement": final_judgement,
+        #     "details": detailed_scores
+        # }
+        return final_judgement
     else:
         raise ValueError(f"Unknown evaluation mode: {eval_mode}")
 
 
 # pipeline
-def run_full_evaluation(task: str, model_responses: List[str], plan_agent_args: str, revise_agent_args: str, critic_args: str, save_dir: str = "./judge_configs", max_revise_round: int = 3, max_try: int = 3):
+def run_full_evaluation(task: str, model_responses: List[str], plan_agent_args: str, revise_agent_args: str, critic_args: str, save_dir: str = "./args/judge_configs", max_revise_round: int = 3, judge_rounds: int = 2, max_try: int = 3):
     plan_agent = PlanAgent(plan_agent_args)
     critic_agent = CriticAgent(critic_args)
 
@@ -213,7 +220,7 @@ def run_full_evaluation(task: str, model_responses: List[str], plan_agent_args: 
     origin_plan_json, msg, structure_fails = generate_plan(plan_agent, task, model_responses, max_try=max_try)
     stats["plan_structure_failures"] += structure_fails
     if not origin_plan_json:
-         return {"result": None, "plan": None, "judge_results": None, "stats": stats, "reason": msg}
+         return {"judgement": None, "judge_plan": None, "judge_details": None, "stats": stats, "reason": msg}
 
     # Step 2: Review plan and revise
     pre_messages = plan_agent.messages + [{'role': 'assistant', 'content': json.dumps(origin_plan_json, indent=4, ensure_ascii=False)}]
@@ -244,36 +251,89 @@ def run_full_evaluation(task: str, model_responses: List[str], plan_agent_args: 
     judge_files = parse_plan_and_config_judges(plan_json, save_dir)
 
     # Step 4: Run Judging
-    judge_results = run_judge_rounds(task, model_responses, judge_files)
+    judge_results = run_judge_rounds(task, model_responses, judge_files, rounds=judge_rounds)
 
     # Step 5: Aggregate judgements
     final_result = aggregate_final_result(plan_json, judge_results)
 
     return {
-        "result": final_result,
-        "plan": plan_json,
-        "judge_results": judge_results,
+        "judgement": final_result,
+        "judge_plan": plan_json,
+        "judge_details": judge_results,
         "stats": stats,
         "reason": "success"
     }
 
 
+# save result
+def save_results(data: list, save_path: str):
+    if '.jsonl' in save_path:
+        save_jsonl(data, save_path)
+    elif '.json' in save_path:
+        save_json(data, save_path)
+    elif '.xlsx' in save_path:
+        pd.DataFrame(data).to_excel(save_path, index=False)
+    else:
+        print('Save results fail due to unsupported format!')
+        return
+    print(f'Save {len(data)} results to: {save_path}')
+
+
+# batch apply
+def run_evaluation_batch(data: list, result_save_path: str, plan_agent_args: str = './args/plan.json', revise_agent_args: str = './args/plan-revise.json', critic_args: str = './args/plan-critic.json', config_save_dir: str = './args/judge_configs', max_revise_round: int = 3, judge_rounds: int = 2, max_try: int = 3):
+    new_data = []
+    for idx, one in tqdm(enumerate(data), total=len(data)):
+        output = run_full_evaluation(
+            task=one.get('task'),
+            model_responses=one.get('model_responses'),
+            plan_agent_args=plan_agent_args,
+            revise_agent_args=revise_agent_args,
+            critic_args=critic_args,
+            save_dir=config_save_dir+'/'+str(idx),
+            max_revise_round=max_revise_round,
+            judge_rounds=judge_rounds,
+            max_try=max_try
+        )
+        for key, v in output.items():
+            one[key] = v
+        new_data.append(one)
+        if result_save_path and len(new_data) % 10 == 0:
+            save_results(new_data, result_save_path)
+
+    if result_save_path:
+        save_results(new_data, result_save_path)
+        
+
 
 if __name__ == "__main__":
-    task = "Evaluate the quality and correctness of model responses for the math reasoning task."
-    model_responses = [
-        "The model reasoned step-by-step and got the correct answer 42.",
-        "The model skipped key reasoning and output 40 without explanation."
-    ]
-    output = run_full_evaluation(
-        task=task,
-        model_responses=model_responses,
-        plan_agent_args="./args/plan.json",
-        revise_agent_args="./args/plan-revise.json",
-        critic_args="./args/plan-critic.json",
-        save_dir="./judge_configs",
-        max_revise_round=3,
+    # task = "Evaluate the quality and correctness of model responses for the math reasoning task."
+    # model_responses = [
+    #     "The model reasoned step-by-step and got the correct answer 42.",
+    #     "The model skipped key reasoning and output 40 without explanation."
+    # ]
+    # output = run_full_evaluation(
+    #     task=task,
+    #     model_responses=model_responses,
+    #     plan_agent_args="./args/plan.json",
+    #     revise_agent_args="./args/plan-revise.json",
+    #     critic_args="./args/plan-critic.json",
+    #     save_dir="./judge_configs",
+    #     max_revise_round=3,
+    #     max_try=3
+    # )
+    # print("\n=== FINAL EVALUATION RESULT ===")
+    # print(json.dumps(output, indent=2, ensure_ascii=False))
+
+    data = ''
+    result_save_path = ''
+    run_evaluation_batch(
+        data=data, 
+        result_save_path=result_save_path, 
+        plan_agent_args='./args/plan.json', 
+        revise_agent_args='./args/plan-revise.json', 
+        critic_args='./args/plan-critic.json', 
+        config_save_dir='./args/mt-bench/judge_configs', 
+        max_revise_round=3, 
+        judge_rounds=1, 
         max_try=3
     )
-    print("\n=== FINAL EVALUATION RESULT ===")
-    print(json.dumps(output, indent=2, ensure_ascii=False))
