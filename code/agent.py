@@ -23,14 +23,16 @@ class Agent:
         ).to(device)
          
     def load_promptTemp(self):
+        self.system_prompt = ''
+        self.user_prompt = ''
         system_prompt_path = self.params.get("system_prompt_path", '')
         user_prompt_path = self.params.get("user_prompt_path", '')
-        if not system_prompt_path:
-            raise ValueError('Empty system prompt path for agent!')
+        if system_prompt_path:
+            self.system_prompt = read_text(system_prompt_path)
         if not user_prompt_path:
             raise ValueError('Empty user prompt path for agent!')
-        self.system_prompt = read_text(system_prompt_path)
-        self.user_prompt = read_text(user_prompt_path)
+        else:
+            self.user_prompt = read_text(user_prompt_path)  
 
     def get_userprompt(self, task:str) -> None:
         self.load_promptTemp()
@@ -48,14 +50,16 @@ class Agent:
 
         
     def get_messages(self, pre_messages:list = None) -> None:
-        current_messages = [
-            {'role': 'system', 'content': self.system_prompt},
-            {'role': 'user', 'content': self.user_prompt}
-        ]
+        current_messages = []
+        if self.system_prompt:
+            current_messages.append({'role': 'system', 'content': self.system_prompt})
+        if self.user_prompt:
+            current_messages.append({'role': 'user', 'content': self.user_prompt})
         if not pre_messages:
             self.messages = current_messages
         else:
             self.messages = pre_messages + current_messages
+    
     
     def get_response(self, max_new_tokens:int=512, thinking:bool=False, prt:bool=False) -> str:
         resp = ''

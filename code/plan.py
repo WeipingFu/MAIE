@@ -1,5 +1,6 @@
 from utils import load_json
 from agent import Agent
+import json
 
 
 class PlanAgent(Agent):
@@ -16,27 +17,33 @@ class PlanAgent(Agent):
                 one = 'Dimension: {}\nScoring Scale: {}\nHigh Score Indicator: {}\nLow Score Indicator: {}\n'.format(item.get('dimension',''), item.get('scoring_scale'), item.get('high_score_indicator',''), item.get('low_score_indicator',''))
                 self.user_criteria += one
 
-    def get_userprompt(self, task:str, model_responses:list) -> None:
+    def get_userprompt(self, task:str, model_responses:list, round:int = 1, feedback:dict = None) -> None:
         print('start to process user prompt for plan agent!')
         # load prompt template
         self.load_promptTemp()
-        # handle model responses
-        if len(model_responses) == 1:
-            eval_mode = 'pointwise'
-        elif len(model_responses) == 2:
-            eval_mode = 'pairwise'
+        if round == 1:
+            # handle model responses
+            if len(model_responses) == 1:
+                eval_mode = 'pointwise'
+            elif len(model_responses) == 2:
+                eval_mode = 'pairwise'
+            else:
+                raise ValueError('The count of model_responses = {}, which is not supported!'.format(len(model_responses)))
+            model_response = '\n\n'.join(['[Response {}]\n{}'.format(i+1, output) for i,output in enumerate(model_responses)])
+            # get user criteria
+            self.get_user_criteria()
+            # get examples
+            self.get_examplestr()
+            # generate prompt
+            self.user_prompt = self.prompt_template.replace('#task_description', task).replace('#evaluation_mode', eval_mode).replace('#model_response', model_response).replace('#criteria', self.user_criteria).replace('#examples', self.example_str)
         else:
-            raise ValueError('The count of model_responses = {}, which is not supported!'.format(len(model_responses)))
-        model_response = '\n\n'.join(['[Response {}]\n{}'.format(i+1, output) for i,output in enumerate(model_responses)])
-        # get user criteria
-        self.get_user_criteria()
-        # get examples
-        self.get_examplestr()
-        # generate prompt
-        self.user_prompt = self.prompt_template.replace('#task_description', task).replace('#evaluation_mode', eval_mode).replace('#model_response', model_response).replace('#criteria', self.user_criteria).replace('#examples', self.example_str)
+            if feedback:
+                self.user_prompt = self.prompt_template.replace('#feedback', json.dumps(feedback, indent=4, ensure_ascii=False))
+            else:
+                raise ValueError(f'Plan Agent fail, no feedback in round {round}!')
 
-    def apply_one(self, task:str, model_responses:list, pre_messages:list = None) -> str:
-        self.get_userprompt(task, model_responses)
+    def apply_one(self, task:str, model_responses:list, round:int = 1, feedback:dict = None, pre_messages:list = None) -> str:
+        self.get_userprompt(task, model_responses, round, feedback)
         self.get_messages(pre_messages)
         resp = self.get_response()
         return resp

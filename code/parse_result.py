@@ -1,5 +1,6 @@
 from utils import load_json, save_json
 import random
+random.seed(42)
 
 # Tier 3: Flagship models, excel at complex reasoning, multi-step mathematics, and understanding nuanced context.
 # Tier 2: Elite models, excel at most common tasks and logical reasoning.

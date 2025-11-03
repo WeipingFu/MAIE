@@ -51,9 +51,9 @@ Follow steps:
       "dependencies": [""],              // optional list of related dimension names
       "assigned_agent": {
         "role_name": "",
-        "role_description": "",          // what this agent is responsible for
+        "role_description": "",          // the role the agent plays, e.g. "Your are a xxxx, responsible for xxxx"
         "evaluation_task": "",           // concise description of what this agent must judge
-        "evaluation_steps": [            // concrete steps the agent must perform
+        "evaluation_steps": [            // detailed steps that the judge agent must follow
           "Step 1: ...",
           "Step 2: ...",
           "Step 3: ..."
