@@ -18,6 +18,9 @@
 High Score Indicator: #high_score_indicator
 Low Score Indicator: #low_score_indicator
 
+[Conversation History Between User and Models]
+#history
+
 [Original Generation Task]
 #gen_task
 

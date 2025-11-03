@@ -4,8 +4,17 @@ from utils import load_json
 class JudgeAgent(Agent):
     def __init__(self, arg_path:str):
         super().__init__(arg_path)
+
+    def get_conv_history(self, convs) -> str:
+        history = ''
+        if convs and len(convs) > 0:
+            history = '[Conversation History]\n'
+            for idx, conv in enumerate(convs):
+                user_prompt += '[Turn {}]\nUser: {}\nModel A: {}\nModel B: {}\n'.format(str(idx+1), conv['user'], conv['a'], conv['b']) 
+            history += '\n\n\n'
+        return history
         
-    def get_userprompt(self, gen_task:str, model_responses:list, round:int = 1, example_paths:list = None):
+    def get_userprompt(self, gen_task:str, model_responses:list, convs:list = None, round:int = 1, example_paths:list = None):
         print('start to process user prompt for judge agent!')
         # load prompt template
         self.load_promptTemp()
@@ -20,9 +29,11 @@ class JudgeAgent(Agent):
         model_response = '\n\n'.join(['[Response {}]\n{}'.format(i+1, output) for i,output in enumerate(model_responses)])
         # get examples
         self.get_examplestr(example_paths)
+        # get history
+        history = self.get_conv_history(convs)
         # generate prompt
         if round == 1:
-            self.user_prompt = self.prompt_template.replace('#evaluation_dimension', self.params.get("dimension")).replace('#task', self.params.get("task")).replace('#evaluation_mode', eval_mode).replace('#scoring_scale', self.params.get("scoring_scale")).replace('#high_score_indicator', self.params.get("high_score_indicator")).replace('#low_score_indicator', self.params.get("low_score_indicator")).replace('#examples', self.example_str).replace('#model_response', model_response).replace('#steps', '\n'.join(self.params.get("steps"))).replace('#gen_task', gen_task).replace('#granularity', self.params.get("granularity"))
+            self.user_prompt = self.prompt_template.replace('#evaluation_dimension', self.params.get("dimension")).replace('#task', self.params.get("task")).replace('#evaluation_mode', eval_mode).replace('#scoring_scale', self.params.get("scoring_scale")).replace('#high_score_indicator', self.params.get("high_score_indicator")).replace('#low_score_indicator', self.params.get("low_score_indicator")).replace('#examples', self.example_str).replace('#model_response', model_response).replace('#steps', '\n'.join(self.params.get("steps"))).replace('#gen_task', gen_task).replace('#granularity', self.params.get("granularity")).replace('#history', history)
         elif round == 2:
             depends = self.params.get('dependencies', [])
             if len(depends) > 0:
@@ -32,10 +43,10 @@ class JudgeAgent(Agent):
             # feedback
 
     
-    def apply_one(self, gen_task:str, model_responses:list, max_new_tokens:int = 512, round:int = 1, example_paths:list = None, pre_messages:list = None, prt:bool = False):
+    def apply_one(self, gen_task:str, model_responses:list, convs:list = None, max_new_tokens:int = 512, round:int = 1, example_paths:list = None, pre_messages:list = None, prt:bool = False):
         resp = ''
         self.system_prompt = self.system_prompt.replace('#task_type', self.params.get('task_type'))
-        self.get_userprompt(gen_task, model_responses, round, example_paths)
+        self.get_userprompt(gen_task, model_responses, convs, round, example_paths)
         self.get_messages(pre_messages)
         resp = self.get_response(max_new_tokens=max_new_tokens, prt=prt)
         return resp

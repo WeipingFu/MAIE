@@ -17,7 +17,16 @@ class PlanAgent(Agent):
                 one = 'Dimension: {}\nScoring Scale: {}\nHigh Score Indicator: {}\nLow Score Indicator: {}\n'.format(item.get('dimension',''), item.get('scoring_scale'), item.get('high_score_indicator',''), item.get('low_score_indicator',''))
                 self.user_criteria += one
 
-    def get_userprompt(self, task:str, model_responses:list, round:int = 1, feedback:dict = None) -> None:
+    def get_conv_history(self, convs) -> str:
+        history = ''
+        if convs and len(convs) > 0:
+            history = '[Conversation History]\n'
+            for idx, conv in enumerate(convs):
+                user_prompt += '[Turn {}]\nUser: {}\nModel A: {}\nModel B: {}\n'.format(str(idx+1), conv['user'], conv['a'], conv['b']) 
+            history += '\n\n\n'
+        return history
+
+    def get_userprompt(self, task:str, model_responses:list, convs:list = None, round:int = 1, feedback:dict = None) -> None:
         print('start to process user prompt for plan agent!')
         # load prompt template
         self.load_promptTemp()
@@ -34,16 +43,18 @@ class PlanAgent(Agent):
             self.get_user_criteria()
             # get examples
             self.get_examplestr()
+            # get history
+            history = self.get_conv_history(convs)
             # generate prompt
-            self.user_prompt = self.prompt_template.replace('#task_description', task).replace('#evaluation_mode', eval_mode).replace('#model_response', model_response).replace('#criteria', self.user_criteria).replace('#examples', self.example_str)
+            self.user_prompt = self.prompt_template.replace('#task_description', task).replace('#evaluation_mode', eval_mode).replace('#model_response', model_response).replace('#criteria', self.user_criteria).replace('#examples', self.example_str).replace('#history', history)
         else:
             if feedback:
                 self.user_prompt = self.prompt_template.replace('#feedback', json.dumps(feedback, indent=4, ensure_ascii=False))
             else:
                 raise ValueError(f'Plan Agent fail, no feedback in round {round}!')
 
-    def apply_one(self, task:str, model_responses:list, round:int = 1, feedback:dict = None, pre_messages:list = None) -> str:
-        self.get_userprompt(task, model_responses, round, feedback)
+    def apply_one(self, task:str, model_responses:list, convs:list = None, round:int = 1, feedback:dict = None, pre_messages:list = None) -> str:
+        self.get_userprompt(task, model_responses, convs, round, feedback)
         self.get_messages(pre_messages)
         resp = self.get_response()
         return resp

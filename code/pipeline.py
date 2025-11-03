@@ -13,7 +13,7 @@ import pandas as pd
 
 
 # Generate Plan
-def generate_plan(plan_agent: PlanAgent, task: str, model_responses: List[str], round: int = 1, feedback: dict = None, pre_messages: list = None, max_try: int = 3) -> Tuple[dict, str]:
+def generate_plan(plan_agent: PlanAgent, task: str, model_responses: List[str], convs: list = None, round: int = 1, feedback: dict = None, pre_messages: list = None, max_try: int = 3) -> Tuple[dict, str]:
     """
     Generate and validate the plan structure.
     Returns:
@@ -22,7 +22,7 @@ def generate_plan(plan_agent: PlanAgent, task: str, model_responses: List[str], 
     structure_fail_count = 0
     for attempt in range(1, max_try + 1):
         print(f"\n[PLAN] Attempt {attempt}/{max_try} generating plan...")
-        plan_resp = plan_agent.apply_one(task, model_responses, round, feedback, pre_messages)
+        plan_resp = plan_agent.apply_one(task, model_responses, convs, round, feedback, pre_messages)
         try:
             plan_json = json.loads(plan_resp)
         except json.JSONDecodeError:
@@ -91,7 +91,7 @@ def parse_plan_and_config_judges(plan_json: dict, save_dir: str) -> List[str]:
 
 
 # Run Judge Agents (two turns)
-def run_judge_rounds(task: str, model_responses: List[str], judge_files: List[str], rounds: int = 2) -> Dict[str, dict]:
+def run_judge_rounds(task: str, model_responses: List[str], judge_files: List[str], convs: list = None, rounds: int = 2) -> Dict[str, dict]:
     """
     Perform two rounds of evaluation for each judge agent.
         - First round: Independent evaluation
@@ -106,7 +106,7 @@ def run_judge_rounds(task: str, model_responses: List[str], judge_files: List[st
         dim_name = judge_args["dimension"]
         print(f"\n[JUDGE-R1] Evaluating dimension: {dim_name}")
         judge_agent = JudgeAgent(file_path)
-        resp = judge_agent.apply_one(task, model_responses, round=1)
+        resp = judge_agent.apply_one(task, model_responses, convs, round=1)
         results_round1[dim_name] = resp
 
     if rounds < 2:
@@ -127,7 +127,7 @@ def run_judge_rounds(task: str, model_responses: List[str], judge_files: List[st
     return {"round1": results_round1, "round2": results_round2}
 
 
-# ggregate results
+# aggregate results
 def aggregate_final_result(plan_json: dict, judge_results: Dict[str, dict]) -> dict:
     """
     Aggregate final results based on evaluation mode.
@@ -206,7 +206,7 @@ def aggregate_final_result(plan_json: dict, judge_results: Dict[str, dict]) -> d
 
 
 # pipeline
-def run_full_evaluation(task: str, model_responses: List[str], plan_agent_args: str, revise_agent_args: str, critic_args: str, save_dir: str = "./args/judge_configs", max_revise_round: int = 3, judge_rounds: int = 2, max_try: int = 3):
+def run_full_evaluation(task: str, model_responses: List[str], convs: list = None, plan_agent_args: str = './args/plan.json', revise_agent_args: str = './args/plan-revise.json', critic_args: str = './args/plan-critic.json', save_dir: str = "./args/judge_configs", max_revise_round: int = 3, judge_rounds: int = 2, max_try: int = 3):
     plan_agent = PlanAgent(plan_agent_args)
     critic_agent = CriticAgent(critic_args)
 
@@ -217,7 +217,7 @@ def run_full_evaluation(task: str, model_responses: List[str], plan_agent_args: 
     }
 
     # Step 1: Generate initial plan
-    origin_plan_json, msg, structure_fails = generate_plan(plan_agent, task, model_responses, max_try=max_try)
+    origin_plan_json, msg, structure_fails = generate_plan(plan_agent, task, model_responses, convs=convs, max_try=max_try)
     stats["plan_structure_failures"] += structure_fails
     if not origin_plan_json:
          return {"judgement": None, "judge_plan": None, "judge_details": None, "stats": stats, "reason": msg}
@@ -236,7 +236,7 @@ def run_full_evaluation(task: str, model_responses: List[str], plan_agent_args: 
             stats["revise_rounds"] += 1
             revise_agent = PlanAgent(revise_agent_args)
             revise_result, msg, structure_fails = generate_plan(
-                revise_agent, task, model_responses, 
+                revise_agent, task, model_responses, convs,
                 round=i+1, feedback=critic_result, 
                 pre_messages=pre_messages, max_try=max_try
             )

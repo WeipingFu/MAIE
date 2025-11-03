@@ -2,6 +2,9 @@
 
 
 [Start of Current Input]
+[Conversation History Between User and Models]
+#history
+
 [Original Task Description]
 #task_description
 
