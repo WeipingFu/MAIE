@@ -2,25 +2,41 @@ from utils import load_json, read_text
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
 from api_request import completion
+from model_scheduler import get_model_key, device, GLOBAL_SCHEDULER
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-print('device: {}'.format(device))
+# GLOBAL_SCHEDULER = None
 
 class Agent:
     def __init__(self, arg_path:str):
         self.params = load_json(arg_path)
         self.model_name = self.params.get("model_name", '')
-        model_type = self.params.get("model_type", 'open')
+        self.model_type = self.params.get("model_type", 'open')
+        self.tokenizer_path = self.params.get('tokenizer_path','')
+        self.model_path = self.params.get('model_path','')
+        self.model_key = get_model_key(self.params)
+        self.model = None
         self.tokenizer = None
-        if model_type == 'open':
-            self.load_model(self.params.get('tokenizer_path',''), self.params.get('model_path',''))
-    
-    def load_model(self, tokenizer_path:str, model_path:str):
-        self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_path,
-            dtype="auto"
-        ).to(device)
+        self.example_str = ''
+
+
+    def _ensure_model_loaded(self):
+        """Internal helper to ensure the necessary model is active on GPU via the scheduler."""
+        # global GLOBAL_SCHEDULER
+        # print('_ensure_model_loaded', GLOBAL_SCHEDULER)
+        if self.model_type == 'open' and GLOBAL_SCHEDULER:
+            if GLOBAL_SCHEDULER.active_model_key != self.model_key:
+                # Request the scheduler to load this model and unload others
+                self.model, self.tokenizer = GLOBAL_SCHEDULER.load_model(
+                    self.model_key, 
+                    self.model_path, 
+                    self.tokenizer_path
+                )
+            else:
+                # Model is already active, just retrieve the handles
+                self.model, self.tokenizer = GLOBAL_SCHEDULER.get_active_model_and_tokenizer()
+        elif self.model_type == 'open' and not GLOBAL_SCHEDULER:
+             raise RuntimeError("ModelScheduler is not initialized. Cannot run open-source model agents.")
+        # If model_type is not 'open' (e.g., 'api'), no model needs loading.
          
     def load_promptTemp(self):
         self.system_prompt = ''
@@ -35,7 +51,7 @@ class Agent:
             self.user_prompt = read_text(user_prompt_path)  
 
     def get_userprompt(self, task:str) -> None:
-        self.load_promptTemp()
+        # self.load_promptTemp()
         self.user_prompt = self.user_prompt.replace('#task_description', task)
         if self.example_str:
             self.user_prompt = self.user_prompt.replace('#examples', self.example_str)
@@ -66,13 +82,18 @@ class Agent:
         max_new_tokens = self.params.get('max_new_tokens', max_new_tokens)
         thinking = self.params.get('thinking', thinking)
         prt = self.params.get("prt", prt)
+        # print('*'*50, 'Get Response', '*'*50)
+        self._ensure_model_loaded()
+        
         if prt:
             print('Messages:')
             print(self.messages)
 
-        if self.tokenizer is None:
+        if self.model is None:
             resp = completion(self.model_name, self.messages, prt=prt)
         else:
+            if self.tokenizer is None:
+                raise RuntimeError("Model is loaded but tokenizer is missing.")
             text = self.tokenizer.apply_chat_template(
                 self.messages,
                 tokenize=False,

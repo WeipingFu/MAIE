@@ -1,4 +1,5 @@
 from agent import Agent
+import json
 
 class CriticAgent(Agent):
     """
@@ -22,13 +23,7 @@ class CriticAgent(Agent):
         self.get_examplestr()
 
         # Fill template slots
-        self.user_prompt = (
-            self.prompt_template
-                .replace('#task', gen_task)
-                .replace('#examples', self.example_str)
-                .replace('#model_response', model_response)
-                .replace('#eval_plan', eval_plan)
-        )
+        self.user_prompt = self.user_prompt.replace('#task', gen_task).replace('#examples', self.example_str).replace('#model_response', model_response).replace('#eval_plan', json.dumps(eval_plan, indent=4, ensure_ascii=False))
 
     def apply_one(self, gen_task:str, model_responses:list, eval_plan:dict, prt:bool = False):
         self.get_userprompt(gen_task, model_responses, eval_plan)

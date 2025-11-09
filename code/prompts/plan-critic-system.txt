@@ -28,7 +28,7 @@ You are the Plan-Critic Agent. Your task is to review and critique a proposed Ev
   "decision": "accept" or "revise",
   "confidence": "between 0 and 1",
   "issues": ["list of issues, if there are no issues, then return a blank list"],
-  "suggestion": "if decision = revise, return suggestions for revision; if decision = accept, return empty string",
+  "suggestion": "string, if decision = revise, return suggestions for revision; if decision = accept, return empty string",
   "rationale": "short explanation"
 }
 

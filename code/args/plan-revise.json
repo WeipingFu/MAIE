@@ -4,9 +4,9 @@
     "model_path": "",
     "tokenizer_path": "",
     "user_prompt_path": "./prompts/plan-revise-user.txt",
-    "max_new_tokens": 1024,
+    "max_new_tokens": 2048,
     "thinking": false,
-    "prt": true,
+    "prt": false,
     "criteria_path": "",
-    "example_paths": ["../examples/plan/summarization.txt"]
+    "example_paths": []
 }

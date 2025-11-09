@@ -21,7 +21,7 @@ def get_model_score_heuristic(dimension: dict, model_name: str) -> float:
     model_meta = JUDGE_POOL.get(model_name, {"tier": 1, "cost": 1.0})
     
     # dimension importance and complexity
-    weight = dimension.get("weight", 0.3)
+    weight = float(dimension.get("weight", 0.3))
     complex_keywords = ["reasoning", "logic", "consistency", "factual", "depth", "creativity", "math", "code"]
     # check if the dimension name or definition contain complex keywords
     dim_text = dimension.get("name", "") + " " + dimension.get("definition", "")
@@ -41,7 +41,7 @@ def get_model_score_heuristic(dimension: dict, model_name: str) -> float:
     return final_score
 
 
-def parse_evaluation_plan(plan_json: dict, save_dir:str, system_prompt_path: str = './prompts/judge-r1-system.txt', user_prompt_path: str = './prompts/judge-r1-user.txt', model_type: str = '', strategy: str = "random") -> None:
+def parse_evaluation_plan(plan_json: dict, save_dir:str, system_prompt_path: str = './prompts/judge-r1-system.txt', user_prompt_path: str = './prompts/judge-r1-user.txt', model_type: str = 'open', strategy: str = "random") -> None:
     """
     Parses the evaluation plan and assigns a Judge model to each dimension 
     based on the specified strategy ('random' or 'heuristic') and model filtering.
@@ -55,8 +55,9 @@ def parse_evaluation_plan(plan_json: dict, save_dir:str, system_prompt_path: str
     {
         "task_type": "",
         "sub_task": "",
+        "evaluation_mode": "",
         "evaluation_dimensions": [
-            {"name":"", "definition":"", "rationale":"", "weight":0.2, "evaluation_granularity": "",
+            {"name":"", "definition":"", "rationale":"", "weight":"0.2", "evaluation_granularity": "",
             "scoring_scale":"", "high_score_indicator":"", "low_score_indicator":"", "dependencies":[],
             "assigned_agent":{
                 "role_name":"", "role_description":"", "evaluation_task":"", "evaluation_steps":[]
@@ -67,7 +68,7 @@ def parse_evaluation_plan(plan_json: dict, save_dir:str, system_prompt_path: str
     """
    
     task_type = plan_json.get("task_type", "common").lower()
-    eval_dims = plan_json.get("evaluation_dimensions", "")
+    eval_dims = plan_json.get("evaluation_dimensions", [])
 
     # 1. Filter available judges by task_type (allows common models for specific tasks)
     available_judges_meta = {
@@ -121,6 +122,7 @@ def parse_evaluation_plan(plan_json: dict, save_dir:str, system_prompt_path: str
             "system_prompt_path": system_prompt_path,
             "user_prompt_path": user_prompt_path,
             "task_type": task_type,
+            "evaluation_mode": plan_json.get("evaluation_mode", ""),
             "dimension": dimension['name'],
             'definition': dimension['definition'],
             "scoring_scale": dimension['scoring_scale'],
@@ -140,6 +142,9 @@ def parse_evaluation_plan(plan_json: dict, save_dir:str, system_prompt_path: str
         save_path = save_dir+f"{dimension['name']}_judge.json"
         save_json(agent_file, save_path)
         print('Save judge\'s arg file to {}'.format(save_path))
+    save_path = save_dir+'plan.json'
+    save_json(plan_json, save_path)
+    print(f'Save plan to {save_path}')
 
 
 if __name__ == "__main__":

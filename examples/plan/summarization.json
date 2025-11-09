@@ -71,16 +71,5 @@
           ]
         }
       }
-    ],
-    "evaluation_graph": {
-      "nodes": [
-        "Fluency and Coherence",
-        "Content Coverage",
-        "Factual Consistency"
-      ],
-      "edges": [
-        {"from": "Content Coverage", "to": "Factual Consistency"},
-        {"from": "Factual Consistency", "to": "Content Coverage"}
-      ]
-    }
+    ]
 }

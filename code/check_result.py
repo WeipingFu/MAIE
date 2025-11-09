@@ -21,16 +21,18 @@ def validate_plan_json(plan_json: Any) -> Tuple[bool, str]:
         try:
             plan_json = json.loads(plan_json)
         except json.JSONDecodeError as e:
-            return False, f"JSON parsing failed: Input is a string but not valid JSON. Error: {e}"
+            return False, errors, f"JSON parsing failed: Input is a string but not valid JSON. Error: {e}"
 
     # 1. Top-Level Structure Checks
     if not isinstance(plan_json, dict):
-        return False, f"Plan result must be a dictionary after processing, but found {type(plan_json).__name__}."
+        return False, errors, f"Plan result must be a dictionary after processing, but found {type(plan_json).__name__}."
 
     required_keys = {
         "task_type": str, 
+        "sub_task": str,
+        "evaluation_mode": str,
         "evaluation_dimensions": list, 
-        "evaluation_graph": dict
+        # "evaluation_graph": dict
     }
 
     for key, expected_type in required_keys.items():
@@ -40,11 +42,11 @@ def validate_plan_json(plan_json: Any) -> Tuple[bool, str]:
             errors.append(f"Key '{key}' must be of type {expected_type.__name__}, but found {type(plan_json[key]).__name__}.")
 
     if errors:
-        return False, "Top-Level Structure Errors: \n{}".format('\n'.join(errors))
+        return False, errors, "Top-Level Structure Errors: \n{}".format('\n'.join(errors))
 
     # Prepare for cross-field consistency checks
     dims = plan_json["evaluation_dimensions"]
-    graph = plan_json["evaluation_graph"]
+    # graph = plan_json["evaluation_graph"]
     dimension_names = {d.get("name") for d in dims if isinstance(d, dict) and "name" in d}
     
     # 2. Dimension-Level and Nested Structure Checks
@@ -100,68 +102,78 @@ def validate_plan_json(plan_json: Any) -> Tuple[bool, str]:
             elif not isinstance(agent[key], expected_type):
                 errors.append(f"Key '{key}' in agent for '{dim_name}' must be {expected_type.__name__}.")
 
-    # 3. Evaluation Graph Consistency Checks
-    # Check graph keys
-    if "nodes" not in graph or not isinstance(graph["nodes"], list):
-        errors.append("evaluation_graph is missing 'nodes' or 'nodes' is not a list.")
-    if "edges" not in graph or not isinstance(graph["edges"], list):
-        errors.append("evaluation_graph is missing 'edges' or 'edges' is not a list.")
+    # 3. Check Dependencies Validity
+    for dim in dims:
+        name = dim.get("name", "<unknown>")
+        deps = dim.get("dependencies", [])
+        if not isinstance(deps, list):
+            errors.append(f"[{name}] dependencies should be a list.")
+            continue
+        for dep in deps:
+            if dep and dep not in dimension_names:
+                errors.append(f"[{name}] has invalid dependency '{dep}' (not found among dimension names).")
+    # # 3. Evaluation Graph Consistency Checks
+    # # Check graph keys
+    # if "nodes" not in graph or not isinstance(graph["nodes"], list):
+    #     errors.append("evaluation_graph is missing 'nodes' or 'nodes' is not a list.")
+    # if "edges" not in graph or not isinstance(graph["edges"], list):
+    #     errors.append("evaluation_graph is missing 'edges' or 'edges' is not a list.")
         
-    if "nodes" in graph and "edges" in graph:
-        # Check nodes alignment
-        graph_nodes = set(graph["nodes"])
-        if graph_nodes != dimension_names:
-            missing_in_nodes = dimension_names - graph_nodes
-            extra_in_nodes = graph_nodes - dimension_names
-            if missing_in_nodes:
-                errors.append(f"Dimensions missing from graph['nodes']: {missing_in_nodes}.")
-            if extra_in_nodes:
-                errors.append(f"Extra nodes in graph['nodes'] not defined as dimensions: {extra_in_nodes}.")
+    # if "nodes" in graph and "edges" in graph:
+    #     # Check nodes alignment
+    #     graph_nodes = set(graph["nodes"])
+    #     if graph_nodes != dimension_names:
+    #         missing_in_nodes = dimension_names - graph_nodes
+    #         extra_in_nodes = graph_nodes - dimension_names
+    #         if missing_in_nodes:
+    #             errors.append(f"Dimensions missing from graph['nodes']: {missing_in_nodes}.")
+    #         if extra_in_nodes:
+    #             errors.append(f"Extra nodes in graph['nodes'] not defined as dimensions: {extra_in_nodes}.")
 
-        # Dependency and Edge Alignment
-        required_dependencies_by_dim: Dict[str, set] = {name: set() for name in dimension_names}
+    #     # Dependency and Edge Alignment
+    #     required_dependencies_by_dim: Dict[str, set] = {name: set() for name in dimension_names}
         
-        for edge_index, edge in enumerate(graph["edges"]):
-            if not isinstance(edge, dict) or "from" not in edge or "to" not in edge:
-                errors.append(f"Edge at index {edge_index} is malformed.")
-                continue
+    #     for edge_index, edge in enumerate(graph["edges"]):
+    #         if not isinstance(edge, dict) or "from" not in edge or "to" not in edge:
+    #             errors.append(f"Edge at index {edge_index} is malformed.")
+    #             continue
                 
-            source, target = edge["from"], edge["to"]
+    #         source, target = edge["from"], edge["to"]
             
-            if source not in dimension_names:
-                errors.append(f"Edge source '{source}' is not a defined dimension name.")
-            if target not in dimension_names:
-                errors.append(f"Edge target '{target}' is not a defined dimension name.")
+    #         if source not in dimension_names:
+    #             errors.append(f"Edge source '{source}' is not a defined dimension name.")
+    #         if target not in dimension_names:
+    #             errors.append(f"Edge target '{target}' is not a defined dimension name.")
                 
-            if target in required_dependencies_by_dim:
-                required_dependencies_by_dim[target].add(source)
+    #         if target in required_dependencies_by_dim:
+    #             required_dependencies_by_dim[target].add(source)
 
-        # Compare dependencies list in dimensions against required dependencies from graph edges
-        for dim in dims:
-            dim_name = dim.get("name")
-            if dim_name in required_dependencies_by_dim:
-                declared_deps = set(dim.get("dependencies", []))
-                required_deps = required_dependencies_by_dim[dim_name]
+    #     # Compare dependencies list in dimensions against required dependencies from graph edges
+    #     for dim in dims:
+    #         dim_name = dim.get("name")
+    #         if dim_name in required_dependencies_by_dim:
+    #             declared_deps = set(dim.get("dependencies", []))
+    #             required_deps = required_dependencies_by_dim[dim_name]
                 
-                # Every declared dependency must be reflected as an incoming edge
-                if not declared_deps.issubset(required_deps):
-                    extra_deps = declared_deps - required_deps
-                    errors.append(f"Dimension '{dim_name}' declares dependencies {extra_deps}, but no corresponding incoming edge was found in evaluation_graph.")
+    #             # Every declared dependency must be reflected as an incoming edge
+    #             if not declared_deps.issubset(required_deps):
+    #                 extra_deps = declared_deps - required_deps
+    #                 errors.append(f"Dimension '{dim_name}' declares dependencies {extra_deps}, but no corresponding incoming edge was found in evaluation_graph.")
                 
-                # Every incoming edge must be reflected as a declared dependency (Alignment)
-                if not required_deps.issubset(declared_deps):
-                    missing_deps = required_deps - declared_deps
-                    errors.append(f"Dimension '{dim_name}' is missing declared dependencies {missing_deps} required by incoming edges in evaluation_graph.")
+    #             # Every incoming edge must be reflected as a declared dependency (Alignment)
+    #             if not required_deps.issubset(declared_deps):
+    #                 missing_deps = required_deps - declared_deps
+    #                 errors.append(f"Dimension '{dim_name}' is missing declared dependencies {missing_deps} required by incoming edges in evaluation_graph.")
                     
-                # Ensure all dependency names are valid dimension names
-                invalid_deps = declared_deps - dimension_names
-                if invalid_deps:
-                     errors.append(f"Dimension '{dim_name}' declares invalid dependency names: {invalid_deps}.")
+    #             # Ensure all dependency names are valid dimension names
+    #             invalid_deps = declared_deps - dimension_names
+    #             if invalid_deps:
+    #                  errors.append(f"Dimension '{dim_name}' declares invalid dependency names: {invalid_deps}.")
     
     if errors:
-        return False, "Validation Failed. Errors found: \n{}".format('\n'.join(errors))
+        return False, errors, "Validation Failed. Errors found: \n{}".format('\n'.join(errors))
     
-    return True, "Plan JSON structure and internal consistency validated successfully."
+    return True, errors, "Plan JSON structure and internal consistency validated successfully."
 
 
 if __name__ == "__main__":
@@ -239,17 +251,17 @@ if __name__ == "__main__":
             }
         }
         ],
-        "evaluation_graph": {
-        "nodes": [
-            "Fluency and Coherence",
-            "Content Coverage",
-            "Factual Consistency"
-        ],
-        "edges": [
-            {"from": "Factual Consistency", "to": "Content Coverage"},
-            {"from": "Content Coverage", "to": "Factual Consistency"}
-        ]
-        }
+        # "evaluation_graph": {
+        # "nodes": [
+        #     "Fluency and Coherence",
+        #     "Content Coverage",
+        #     "Factual Consistency"
+        # ],
+        # "edges": [
+        #     {"from": "Factual Consistency", "to": "Content Coverage"},
+        #     {"from": "Content Coverage", "to": "Factual Consistency"}
+        # ]
+        # }
     }
 
     # Mismatched dependencies and graph edges
@@ -279,15 +291,15 @@ if __name__ == "__main__":
             }
         }
         ],
-        "evaluation_graph": {
-        "nodes": ["A", "B"],
-        "edges": [
-            # Edge B -> A (Means A should depend on B)
-            {"from": "B", "to": "A"}, 
-            # Edge A -> B (Means B should depend on A, but B's dependencies list is empty)
-            {"from": "A", "to": "B"} 
-        ]
-        }
+        # "evaluation_graph": {
+        # "nodes": ["A", "B"],
+        # "edges": [
+        #     # Edge B -> A (Means A should depend on B)
+        #     {"from": "B", "to": "A"}, 
+        #     # Edge A -> B (Means B should depend on A, but B's dependencies list is empty)
+        #     {"from": "A", "to": "B"} 
+        # ]
+        # }
     }
 
     # Check plan jsons

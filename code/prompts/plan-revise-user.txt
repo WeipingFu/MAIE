@@ -1,9 +1,15 @@
-Based on the preceding conversation history, which contains the Original Evaluation Plan (from the assistant's last message) and the system-defined role, your sole task is to revise that plan according to the Critic Agent's Feedback provided below.
+Based on the preceding conversation history, which contains the Original Evaluation Plan (from the assistant's last message) and the system-defined role, your task is to revise that plan according to the Critic Agent's Feedback provided below.
+
+
+[Revision Policy]
+The goal is to produce a valid, revised plan that incorporates feedback while maintaining structural integrity.
+1. Strict Structural Preservation: The overall JSON structure (including all key names, key nesting hierarchy, and top-level fields) MUST NOT be changed.
+2. Flexible Content Modification: You MAY modify the content values of any field, including (but not limited to) evaluation descriptions, weights, indicators, reasoning steps, dependencies, or evaluation graph, as long as the schema remains identical.
 
 
 [Revision Steps]
 To ensure the quality and traceability of the revision, please follow these steps:
-1. Comprehensive Analysis: Carefully analyze the Original Evaluation Plan (from the conversation history) and the Critic Agent's Feedback to understand all logical flaws, lack of clarity, or content errors that must be addressed.
+1. Comprehensive Analysis: Carefully analyze the Original Evaluation Plan and the Critic Agent's Feedback to understand all logical flaws, lack of clarity, or content errors that must be addressed.
 2. Identify Target Fields: Precisely identify the fields in the Plan JSON that require modification (e.g., task_type, evaluation_dimension, dependencies, etc.).
 3. Execute Revision: While preserving the original JSON structure, key names, and hierarchy, modify only the Content Values of the target fields. Ensure all modifications fully resolve the Critic's feedback.
 4. Document Rationale: Detail the specific changes you made in response to each piece of Critic feedback and explain how these changes enhance the plan's completeness and logical consistency.

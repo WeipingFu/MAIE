@@ -22,14 +22,13 @@ class PlanAgent(Agent):
         if convs and len(convs) > 0:
             history = '[Conversation History]\n'
             for idx, conv in enumerate(convs):
-                user_prompt += '[Turn {}]\nUser: {}\nModel A: {}\nModel B: {}\n'.format(str(idx+1), conv['user'], conv['a'], conv['b']) 
+                history += '[Turn {}]\nUser: {}\nModel A: {}\nModel B: {}\n'.format(str(idx+1), conv['user'], conv['a'], conv['b']) 
             history += '\n\n\n'
         return history
 
     def get_userprompt(self, task:str, model_responses:list, convs:list = None, round:int = 1, feedback:dict = None) -> None:
-        print('start to process user prompt for plan agent!')
-        # load prompt template
-        self.load_promptTemp()
+        # print('start to process user prompt for plan agent!')
+    
         if round == 1:
             # handle model responses
             if len(model_responses) == 1:
@@ -46,17 +45,23 @@ class PlanAgent(Agent):
             # get history
             history = self.get_conv_history(convs)
             # generate prompt
-            self.user_prompt = self.prompt_template.replace('#task_description', task).replace('#evaluation_mode', eval_mode).replace('#model_response', model_response).replace('#criteria', self.user_criteria).replace('#examples', self.example_str).replace('#history', history)
+            self.user_prompt = self.user_prompt.replace('#task_description', task).replace('#evaluation_mode', eval_mode).replace('#model_response', model_response).replace('#criteria', self.user_criteria).replace('#examples', self.example_str).replace('#history', history)
         else:
             if feedback:
-                self.user_prompt = self.prompt_template.replace('#feedback', json.dumps(feedback, indent=4, ensure_ascii=False))
+                self.user_prompt = self.user_prompt.replace('#feedback', json.dumps(feedback, indent=4, ensure_ascii=False))
             else:
                 raise ValueError(f'Plan Agent fail, no feedback in round {round}!')
 
     def apply_one(self, task:str, model_responses:list, convs:list = None, round:int = 1, feedback:dict = None, pre_messages:list = None) -> str:
+        # load prompt template
+        self.load_promptTemp()
         self.get_userprompt(task, model_responses, convs, round, feedback)
         self.get_messages(pre_messages)
-        resp = self.get_response()
+        resp = self.get_response(
+            max_new_tokens=self.params.get('max_new_tokens', 1024), 
+            thinking=self.params.get('thinking', False), 
+            prt=self.params.get('prt', False)
+        )
         return resp
 
 
