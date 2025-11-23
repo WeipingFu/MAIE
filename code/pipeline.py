@@ -156,12 +156,6 @@ def aggregate_final_result(plan_json: dict, judge_results: Dict[str, dict]) -> d
             detailed_scores[name] = {"weight": weight, "score": score}
 
         final_score = total_score / weight_sum if weight_sum > 0 else 0.0
-        # return {
-        #     "evaluation_mode": "pointwise",
-        #     "final_score": final_score,
-        #     "judgement": "",  # no winner concept in pointwise
-        #     "details": detailed_scores
-        # }
         return final_score
 
     elif eval_mode == "pairwise":
@@ -200,12 +194,6 @@ def aggregate_final_result(plan_json: dict, judge_results: Dict[str, dict]) -> d
             final_judgement = "Response 1"
         else:
             final_judgement = "Response 2"
-        # return {
-        #     "evaluation_mode": "pairwise",
-        #     "final_score": response_scores,
-        #     "judgement": final_judgement,
-        #     "details": detailed_scores
-        # }
         print(f'final_judgement:{final_judgement} =====================================================')
         return final_judgement
     else:

@@ -16,7 +16,7 @@ To ensure the quality and traceability of the revision, please follow these step
 
 
 [Feedback from Critic Agent]
-#feedback
+{feedback}
 
 
 [Required JSON Schema (strict)]

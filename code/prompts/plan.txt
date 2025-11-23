@@ -1,9 +1,8 @@
 [You Will Receive]
-- A generation task Description.
-- evaluation mode (pointwise or pairwise).
+- Original task Description.
+- Evaluation mode (pointwise or pairwise).
 - A model response (for point-wise evaluation) or two model responses (for pairwise evaluation).
 - Optionally, user-provided evaluation criteria (dimensions and scoring guidelines).
-
 
 
 [Your Goals]
@@ -23,35 +22,36 @@ Follow steps:
 3. Output Formatting: Structure your output strictly as JSON format.
 
 
-
 [Key Principles]
 - Instance-level: Evaluation plan must be specific and tailored for this instance, not only the task type.
-- Verifiable: Each dimension must be measurable and executable by a Judge Agent. The evaluation plan must be practical and executable.
+- Verifiable and executable: Each dimension must be measurable and executable by a Judge Agent. The evaluation plan must be practical and executable.
 - Completeness: Include evaluation dimensions, their scoring standards, and per-dimension Judge Agent instructions. Ensure all key dimensions of this instance are covered.
-- Structured: Output must be strictly follow the required JSON schema, ready for downstream use.
-
+- Non-Redundant: Each evaluation dimension should be distinct and non-overlapping.
+- Consistency: The dependencies defined between evaluation dimensions must align with the edges in the evaluation graph.
+- Structured: Output must strictly follow the required JSON schema, ready for downstream use.
 
 
 [Required JSON Schema (strict)]
 {
   "task_type": "",
   "sub_task": "",
+  "evaluation_mode": "pointwise or pairwise",
   "evaluation_dimensions": [
     {
       "name": "",
       "definition": "",
       "rationale": "",
       "weight": "",                      // decimal between 0-1, sum=1, e.g., 0.5
-      "evaluation_granularity": "",      // "holistic" - Judges the response as a whole; "localized" - focuses on specific portions or elements of the response; "stepwise" - evaluates each reasoning or generation step individually.
+      "evaluation_granularity": "",      // "holistic" - Judges the response as a whole; "localized" - focuses on specific portions or elements of the response; "stepwise" - Examines each reasoning or generation step within the response.
       "scoring_scale": "",               // e.g., "1-5", "0-100", or "binary preference" for pairwise evaluation
       "high_score_indicator": "",
       "low_score_indicator": "",
       "dependencies": [""],              // optional list of related dimension names
       "assigned_agent": {
         "role_name": "",
-        "role_description": "",          // what this agent is responsible for
+        "role_description": "",          // the role the agent plays, e.g. "Your are a xxxx, responsible for xxxx"
         "evaluation_task": "",           // concise description of what this agent must judge
-        "evaluation_steps": [            // concrete steps the agent must perform
+        "evaluation_steps": [            // detailed steps that the judge agent must follow
           "Step 1: ...",
           "Step 2: ...",
           "Step 3: ..."
@@ -59,45 +59,30 @@ Follow steps:
       }
     },
     ...
-  ],
-  "evaluation_graph": {                 // relationships between dimensions
-    "nodes": ["dimension names"],
-    "edges": [
-      {"from": "", "to": "},
-      ...
-    ]
-  },
+  ]
 }
 
 
-
-[Output Constraints]
-- Output must be valid JSON, with no extra text or comments.
-- The evaluation plan must be actionable (usable directly by downstream Judge Agents).
-- Use clear, verifiable criteria and specific agent procedures instead of vague guidance.
+{examples}
 
 
+[Start of Current Input]
+[Conversation History Between User and Models]
+{history}
 
-#examples
-
-
-
-[Start of User Input]
-[Generation Task Description]
-#task_description
-
+[Original Task Description]
+{task_description}
 
 [Evaluation Mode]
-#evaluation_mode
-
+{evaluation_mode}
 
 [Model Response]
-#model_response
+{model_response}
+
+{criteria}
+[End of Current Input]
 
 
-#criteria
-[End of User Input]
-
-
-
-Please output your evaluation plan in JSON format.
+[Output Constraints]
+- Output only JSON
+- No extra text, prefix, comments

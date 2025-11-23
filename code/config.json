@@ -1,0 +1,35 @@
+{
+    "client": {
+        "model_type": "open",
+        "model_name": "llama-3.1-8b-instruct",
+        "model_path": "",
+        "json_output": true,
+        "function_calling": false,
+        "vision": false,
+        "family": "unknown",
+        "structured_output": true
+    },
+    "planner": {
+        "plan_prompt_path": "./prompts/plan.txt",
+        "revise_prompt_path": "./prompts/plan-revise.txt",
+        "max_new_tokens": 2048,
+        "thinking": false,
+        "prt": false,
+        "criteria_path": "",
+        "example_paths": []
+    },
+    "critic": {
+        "prompt_path": "./prompts/critic.txt",
+        "max_new_tokens": 512,
+        "thinking": false,
+        "prt": false,
+        "criteria_path": "",
+        "example_paths": []
+    },
+    "judge": {
+        "prompt_path": "./prompts/judge.txt",
+        "max_new_tokens": 1024,
+        "thinking": false,
+        "prt": false
+    }
+}

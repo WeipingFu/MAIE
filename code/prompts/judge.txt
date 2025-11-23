@@ -1,11 +1,8 @@
-You are a highly focused Evaluation Agent specializing in the provided domain #task_type. Your task is to perform a diagnosis and structured judgment based on the context.
-
-
 [You Will Receive]
+- Original Generation task and a model response (for point-wise evaluation) or two model responses (for pairwise evaluation).
 - Evaluation Dimension and Task: The name of dimension to be evaluated and your task.
 - Evaluation Mode: "point-wise" or "pairwise".
 - Scoring scale and the indicators of high/low scores.
-- Original Generation task and a model response (for point-wise evaluation) or two model responses (for pairwise evaluation).
 - Evaluation Granularity: The scope and depth of the evaluation. "holistic" - Judges the response as a whole; "localized" - focuses on specific portions or elements of the response; "stepwise" - evaluates each reasoning or generation step individually.
 - Evaluation Steps: Step-by-step guidance on how to conduct the evaluation.
 
@@ -23,12 +20,48 @@ You are a highly focused Evaluation Agent specializing in the provided domain #t
 [Required JSON Schema (strict)]
 {
   "dimension": "string",
-  "evaluation_mode": "string (pointwise or pairwise)",
   "judgement": "string or number (score for pointwise; (Response 1 / Response 2 / Tie) for pairwise)",
-  "step-by-step evaluation process": "string (detailed step-by-step process during evaluation)",
+  "step_by_step_evaluation_process": "string (detailed step-by-step process during evaluation)",
   "evidences": "array of strings (list of evidences you found in the context)",
   "confidence": "string (0-1)"
 }
+
+
+{examples}
+
+
+[Start of Current Input]
+[Conversation History Between User and Models]
+{history}
+
+[Original Generation Task]
+{generation_task}
+
+[Model Response]
+{model_response}
+
+[Evaluation Dimension]
+{dimension}
+
+[Evaluation Task]
+{evaluation_task}
+
+[Evaluation Mode]
+{evaluation_mode}
+
+[Scoring Scale]
+{scoring_scale}
+
+[Indicators]
+High Score Indicator: {high_score_indicator}
+Low Score Indicator: {low_score_indicator}
+
+[Evaluation Granularity]
+{granularity}
+
+[Evaluation Steps]
+{steps}
+[End of Current Input]
 
 
 [Output Constraints]
