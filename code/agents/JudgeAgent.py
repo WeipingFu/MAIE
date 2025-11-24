@@ -2,14 +2,16 @@ from typing import List, Sequence, Literal, Optional
 from autogen_agentchat.agents import BaseChatAgent
 from autogen_agentchat.base import Response
 from autogen_core.model_context import UnboundedChatCompletionContext
-from autogen_agentchat.messages import BaseChatMessage, ChatMessage, TextMessage, UserMessage, SystemMessage
+from autogen_agentchat.messages import BaseChatMessage, TextMessage
+from autogen_core.models import SystemMessage, UserMessage
 from autogen_core import CancellationToken
 from pydantic import BaseModel, Field
+from jinja2 import Template
+from ..utils import load_json, read_text
+# from ..client import client_config, user_client
+from ..client_new import client_config, user_client
 
-from code.utils import load_json, read_text
-from code.client import client_config, user_client
-
-judge_config = load_json("../config.json").get("judge")
+judge_config = load_json("./config.json").get("judge")
 
 
 # --- Format of Judge Response ---
@@ -32,7 +34,7 @@ class UserPrompt:
     def get_conv_history(self, convs):
         history_str = ''
         if convs and len(convs) > 0:
-            history_str = '[Conversation History]\n'
+            history_str = '[Conversation History Between User and Models]\n'
             for idx, conv in enumerate(convs):
                 history_str += '[Turn {}]\nUser: {}\nModel A: {}\nModel B: {}\n'.format(str(idx+1), conv['user'], conv['a'], conv['b'])
             history_str += '\n\n\n'
@@ -56,8 +58,8 @@ class UserPrompt:
             "examples": self.get_examplestr(example_paths),
             "history": self.get_conv_history(convs),
             "generation_task": task,
-            "model_response": '\n\n'.join(['[Response {}]\n{}'.format(i+1, output) for i,output in enumerate(model_responses)]),
-            "dimension": dimension_plan.get("dimension") + ': ' + dimension_plan.get("definition"),
+            "model_response": '\n'.join(['[Response {}]\n{}'.format(i+1, output) for i,output in enumerate(model_responses)]),
+            "dimension": dimension_plan.get("name") + ': ' + dimension_plan.get("definition"),
             "evaluation_task": dimension_plan.get("assigned_agent").get("evaluation_task"),
             "evaluation_mode": eval_mode,
             "scoring_scale": dimension_plan.get("scoring_scale"),
@@ -66,7 +68,10 @@ class UserPrompt:
             "granularity": dimension_plan.get("evaluation_granularity"),
             "steps": dimension_plan.get("assigned_agent").get("evaluation_steps")
         }
-        content = self._user_prompt.format(**template_vars) 
+        template = Template(self._user_prompt)
+        content = template.render(**template_vars)
+        print(f'User Prompt:\n{content}')
+        # content = self._user_prompt.format(**template_vars)
         return content
 
 
@@ -90,21 +95,27 @@ class JudgeAgent(BaseChatAgent):
 
     async def on_messages(self, messages: Sequence[BaseChatMessage], cancellation_token: CancellationToken) -> Response:
         runtime_payload = messages[-1].content
-        task = runtime_payload["task"]
-        model_responses = runtime_payload["model_responses"]
-        dimension_plan = runtime_payload["dimension_plan"]
-        convs = runtime_payload["convs"]
-        example_paths = runtime_payload["example_paths"]
-        print(f"JudgeAgent is working, Dimension is {dimension_plan["name"]}")
+        task = runtime_payload.task
+        model_responses = runtime_payload.model_responses
+        dimension_plan = runtime_payload.dimension_plan
+        convs = runtime_payload.convs
+        example_paths = runtime_payload.example_paths
+        print(dimension_plan)
+        print(f"JudgeAgent is working, Dimension is {dimension_plan.get('name')}")
         content = self._user_prompt.generate_user_prompt(task, model_responses, dimension_plan, convs, example_paths)
-        result = await self._model_client.create(
-            [
-                SystemMessage(content=self._system_message),
-                UserMessage(content=content)
-            ],
-            json_output=JudgeResponse
-        )
-        response_message = ChatMessage(content=result.content, source=self.name)
+        # result = await self._model_client.create(
+        #     [
+        #         SystemMessage(content=self._system_message),
+        #         UserMessage(content=content, source='user')
+        #     ],
+        #     json_output=JudgeResponse
+        # )
+        # response_message = TextMessage(content=result.content, source=self.name)
+        result = await self._model_client.call(
+            self._system_message, 
+            content, 
+            max_new_tokens=judge_config.get("max_new_tokens"))
+        response_message = TextMessage(content=result, source=self.name)
         return Response(chat_message=response_message)
 
     async def on_reset(self, cancellation_token: CancellationToken) -> None:

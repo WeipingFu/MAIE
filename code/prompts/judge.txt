@@ -27,40 +27,39 @@
 }
 
 
-{examples}
+{{examples}}
 
 
 [Start of Current Input]
-[Conversation History Between User and Models]
-{history}
+{{history}}
 
 [Original Generation Task]
-{generation_task}
+{{generation_task}}
 
 [Model Response]
-{model_response}
+{{model_response}}
 
 [Evaluation Dimension]
-{dimension}
+{{dimension}}
 
 [Evaluation Task]
-{evaluation_task}
+{{evaluation_task}}
 
 [Evaluation Mode]
-{evaluation_mode}
+{{evaluation_mode}}
 
 [Scoring Scale]
-{scoring_scale}
+{{scoring_scale}}
 
 [Indicators]
-High Score Indicator: {high_score_indicator}
-Low Score Indicator: {low_score_indicator}
+High Score Indicator: {{high_score_indicator}}
+Low Score Indicator: {{low_score_indicator}}
 
 [Evaluation Granularity]
-{granularity}
+{{granularity}}
 
 [Evaluation Steps]
-{steps}
+{{steps}}
 [End of Current Input]
 
 

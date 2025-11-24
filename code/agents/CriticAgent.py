@@ -2,14 +2,14 @@ from typing import List, Sequence, Literal, Optional
 from autogen_agentchat.agents import BaseChatAgent
 from autogen_agentchat.base import Response
 from autogen_core.model_context import UnboundedChatCompletionContext
-from autogen_agentchat.messages import BaseChatMessage, ChatMessage, TextMessage, UserMessage, SystemMessage
+from autogen_agentchat.messages import BaseChatMessage, TextMessage
 from autogen_core import CancellationToken
 from pydantic import BaseModel, Field
 
-from code.utils import load_json, read_text
-from code.client import client_config, user_client
+from ..utils import load_json, read_text
+from ..client import client_config, user_client
 
-critic_config = load_json("../config.json").get("critic")
+critic_config = load_json("./config.json").get("critic")
 
 
 # --- Format of Critic Response ---

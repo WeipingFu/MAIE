@@ -2,14 +2,17 @@ from typing import List, Sequence, Literal, Optional
 from autogen_agentchat.agents import BaseChatAgent
 from autogen_agentchat.base import Response
 from autogen_core.model_context import UnboundedChatCompletionContext
-from autogen_agentchat.messages import BaseChatMessage, ChatMessage, TextMessage, UserMessage, SystemMessage
+from autogen_agentchat.messages import BaseChatMessage, TextMessage
+from autogen_core.models import SystemMessage, UserMessage
 from autogen_core import CancellationToken
 from pydantic import BaseModel, Field
+from jinja2 import Template
 
-from code.utils import load_json, read_text
-from code.client import client_config, user_client
+from ..utils import load_json, read_text
+# from ..client import client_config, user_client
+from ..client_new import client_config, user_client
 
-planner_config = load_json("../config.json").get("planner")
+planner_config = load_json("./config.json").get("planner")
 
 # --- JudgeAgent Details ---
 class AgentDetails(BaseModel):
@@ -54,14 +57,14 @@ class UserPrompt:
     def __init__(self, mode):
         self._mode = mode
         if self._mode == 'revise':
-            self._user_prompt = read_text(planner_config.get("plan_prompt_path", "../prompts/plan.txt"))
-        else:
             self._user_prompt = read_text(planner_config.get("revise_prompt_path", "../prompts/plan-revise.txt"))
+        else:
+            self._user_prompt = read_text(planner_config.get("plan_prompt_path", "../prompts/plan.txt"))
 
     def get_conv_history(self, convs):
         history_str = ''
         if convs and len(convs) > 0:
-            history_str = '[Conversation History]\n'
+            history_str = '[Conversation History Between User and Models]\n'
             for idx, conv in enumerate(convs):
                 history_str += '[Turn {}]\nUser: {}\nModel A: {}\nModel B: {}\n'.format(str(idx+1), conv['user'], conv['a'], conv['b'])
             history_str += '\n\n\n'
@@ -72,7 +75,7 @@ class UserPrompt:
         user_criteria = ''
         if criteria_path:
             criteria_list = load_json(criteria_path)['evaluation_dimensions']     # {'evaluation_dimensions':[{"dimension":"", "scoring_scale":"", "high_score_indicator":"", "low_score_indicator":""}, ...]}
-            user_criteria += '[Evaluation Criteria]\n'
+            user_criteria += '[User-defined Evaluation Criteria]\n'
             for i, item in enumerate(criteria_list):
                 one = 'Dimension: {}\nScoring Scale: {}\nHigh Score Indicator: {}\nLow Score Indicator: {}\n'.format(item.get('dimension',''), item.get('scoring_scale'), item.get('high_score_indicator',''), item.get('low_score_indicator',''))
                 user_criteria += one
@@ -108,10 +111,13 @@ class UserPrompt:
                 "history": self.get_conv_history(convs),
                 "task_description": task,
                 "evaluation_mode": eval_mode,
-                "model_response": '\n\n'.join(['[Response {}]\n{}'.format(i+1, output) for i,output in enumerate(model_responses)]),
+                "model_response": '\n'.join(['[Response {}]\n{}'.format(i+1, output) for i,output in enumerate(model_responses)]),
                 "criteria": self.get_user_criteria()    
             }
-        content = self._user_prompt.format(**template_vars) 
+        template = Template(self._user_prompt)
+        content = template.render(**template_vars)
+        print(f'User Prompt:\n{content}')
+        # content = self._user_prompt.format(**template_vars) 
         return content
 
 
@@ -138,18 +144,25 @@ class PlannerAgent(BaseChatAgent):
     async def on_messages(self, messages: Sequence[BaseChatMessage], cancellation_token: CancellationToken) -> Response:
         print("PlannerAgent is working ...")
         runtime_payload = messages[-1].content
-        task = runtime_payload["task"]
-        model_responses = runtime_payload["model_responses"]
-        convs = runtime_payload["convs"]
-        content = self._user_prompt.generate_user_prompt(task, model_responses, None, convs)
-        result = await self._model_client.create(
-            [
-                SystemMessage(content=self._system_message),
-                UserMessage(content=content)
-            ],
-            json_output=PlannerResponse
-        )
-        response_message = ChatMessage(content=result.content, source=self.name)
+        task = runtime_payload.task
+        model_responses = runtime_payload.model_responses
+        convs = runtime_payload.convs
+        content = self._user_prompt.generate_user_prompt(task, model_responses, convs=convs)
+        # result = await self._model_client.create(
+        #     [
+        #         SystemMessage(content=self._system_message),
+        #         UserMessage(content=content, source='user')
+        #     ],
+        #     json_output=PlannerResponse
+        # )
+        # # print(result)
+        # response_message = TextMessage(content=result.content, source=self.name)
+        result = await self._model_client.call(
+            self._system_message, 
+            content, 
+            max_new_tokens=planner_config.get("max_new_tokens"))
+        print(result)
+        response_message = TextMessage(content=result, source=self.name)
         return Response(chat_message=response_message)
 
     async def on_reset(self, cancellation_token: CancellationToken) -> None:

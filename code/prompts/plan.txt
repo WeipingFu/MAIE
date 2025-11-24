@@ -63,23 +63,22 @@ Follow steps:
 }
 
 
-{examples}
+{{examples}}
 
 
 [Start of Current Input]
-[Conversation History Between User and Models]
-{history}
+{{history}}
 
 [Original Task Description]
-{task_description}
+{{task_description}}
 
 [Evaluation Mode]
-{evaluation_mode}
+{{evaluation_mode}}
 
 [Model Response]
-{model_response}
+{{model_response}}
 
-{criteria}
+{{criteria}}
 [End of Current Input]
 
 

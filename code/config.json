@@ -2,12 +2,20 @@
     "client": {
         "model_type": "open",
         "model_name": "llama-3.1-8b-instruct",
-        "model_path": "",
+        "model_path": "/data/fwp/pretrained_model/llama-3.1-8b-instruct-f16.gguf",
+        "n_ctx": 2048,
+        "n_gpu_layers": 20,
         "json_output": true,
         "function_calling": false,
         "vision": false,
         "family": "unknown",
         "structured_output": true
+    },
+    "client-new": {
+        "model_type": "open",
+        "model_name": "llama-3.1-8b-instruct",
+        "model_path": "/data/fwp/pretrained_model/llama-3.1-8b-instruct/",
+        "tokenizer_path": "/data/fwp/pretrained_model/llama-3.1-8b-instruct/"
     },
     "planner": {
         "plan_prompt_path": "./prompts/plan.txt",
