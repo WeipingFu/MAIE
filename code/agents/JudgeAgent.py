@@ -70,7 +70,7 @@ class UserPrompt:
         }
         template = Template(self._user_prompt)
         content = template.render(**template_vars)
-        print(f'User Prompt:\n{content}')
+        # print(f'User Prompt:\n{content}')
         # content = self._user_prompt.format(**template_vars)
         return content
 

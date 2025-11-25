@@ -9,7 +9,7 @@ import torch
 
 client_config = load_json("./config.json").get("client-new")
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-device = 'cpu'
+# device = 'cpu'
 print('Device: {}'.format(device))
 
 class LLamaModelClient:
