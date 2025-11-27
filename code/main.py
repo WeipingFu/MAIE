@@ -1,26 +1,25 @@
 from .agents.PlanAgent import PlannerAgent
-# from .agents.CriticAgent import CriticAgent
+from .agents.CriticAgent import CriticAgent
 from .agents.JudgeAgent import JudgeAgent
 from autogen_agentchat.messages import StructuredMessage
-import json
 from typing import List, Optional
 from pydantic import BaseModel
 from autogen_core import CancellationToken
-
-def safe_load_json(content):
-    if type(content) is str:
-        content = content.strip().replace('```json','').replace('```','')
-        content_json = json.loads(content)
-    else:
-        content_json = content
-    return content_json
-
+import copy
+import json
+from .utils import safe_load_json
 
 class PlanInputMessage(BaseModel):
     task: str
     model_responses: List
     convs: Optional[List] = None
+    original_evaluation_plan: Optional[str] = None
+    feedback: Optional[str] = None
 
+class ReviseInputMessage(BaseModel):
+    task: str
+    feedback: str
+    pre_messages: List
 
 class JudgeInputMessage(BaseModel):
     task: str
@@ -29,6 +28,10 @@ class JudgeInputMessage(BaseModel):
     convs: Optional[List] = None
     example_paths: Optional[List] = None
 
+class CriticInputMessage(BaseModel):
+    task: str
+    model_responses: List
+    evaluation_plan: str
 
 
 # aggregate judge results
@@ -47,42 +50,49 @@ def aggregate_final_result(plan_json, judge_results):
         weight_sum = 0.0
         for dim in dims:
             name = dim["name"]
-            weight = float(dim.get("weight", 0))
-            result_json = judge_results.get(name, "{}")
-            print(result_json)
+            weight = float(dim.get("weight", 0.2))
+            result_json = judge_results.get(name, None)
+            # print(result_json)
             try:
-                score = float(result_json.get("judgement", 0))
+                score = float(result_json.get("judgement"))
             except Exception:
                 score = 0.0
+                weight = 0.0
             total_score += weight * score
             weight_sum += weight
             detailed_scores[name] = {"weight": weight, "score": score}
 
-        final_score = total_score / weight_sum if weight_sum > 0 else 0.0
+        final_score = total_score / weight_sum if weight_sum > 0 else 9999
         return final_score
 
     elif eval_mode == "pairwise":
-        response_scores = {"response 1": 0, "response 2": 0}
-        response_map = {"response 1": "response 1", "response a": "response 1", "response 2": "response 2", "response b": "response 2"}
+        response_scores = {"model_a": 0, "model_b": 0}
+        mapping = {
+            "model a": "model_a", "model b": "model_b", 
+            "model_a":"model_a", "model_b":"model_b",
+            "response a":"model_a", "response b":"model_b", 
+            "response 1":"model_a", "response 2":"model_b", 
+            "model 1":"model_a", "model 2":"model_b"  
+        }
         weight_sum = 0.0
 
         for dim in dims:
             name = dim["name"]
-            weight = float(dim.get("weight", 0))
-            result_json = judge_results.get(name, "{}")
-            print(result_json)
+            weight = float(dim.get("weight"), 0.2)
+            result_json = judge_results.get(name, None)
+            # print(result_json)
             try:
                 judgement = result_json.get("judgement", "").strip().lower()
             except Exception:
-                judgement = ""
+                judgement = None
             print(f'Dimension: {name}, Judgement: {judgement}')
             if judgement == "tie":
-                response_scores["response 1"] += weight / 2
-                response_scores["response 2"] += weight / 2
-            elif judgement in ['response 1', 'response 2', 'response a', 'response b']:
-                response_scores[response_map.get(judgement)] += weight
+                response_scores["model_a"] += weight / 2
+                response_scores["model_b"] += weight / 2
+            elif judgement in list(mapping.keys()):
+                response_scores[mapping[judgement]] += weight
             else:
-                pass
+                weight = 0.0
 
             weight_sum += weight
             detailed_scores[name] = {"weight": weight, "judgement": judgement}
@@ -90,21 +100,55 @@ def aggregate_final_result(plan_json, judge_results):
         if weight_sum > 0:
             response_scores = {k: v / weight_sum for k, v in response_scores.items()}
         # print(f'response_scores:{response_scores} =====================================================')
-        if abs(response_scores["response 1"] - response_scores["response 2"]) < 1e-6:
-            final_judgement = "Tie"
-        elif response_scores["response 1"] > response_scores["response 2"]:
-            final_judgement = "Response 1"
+        if response_scores["model_a"] == 0 and response_scores["model_b"] == 0:
+            final_judgement = None
+        elif abs(response_scores["model_a"] - response_scores["model_b"]) < 1e-6:
+            final_judgement = "tie"
+        elif response_scores["model_a"] > response_scores["model_b"]:
+            final_judgement = "model_a"
         else:
-            final_judgement = "Response 2"
+            final_judgement = "model_b"
         print(f'Final Judgement: {final_judgement}')
         return final_judgement
     else:
         raise ValueError(f"Unknown evaluation mode: {eval_mode}")
 
+async def plan_critic_collaboration(planner, critic, task, model_responses, convs, original_evaluation_plan, critic_round):
+    i = 0
+    planner._mode = 'revise'
+    evaluation_plan_str = json.dumps(original_evaluation_plan)
+    while i < critic_round:
+        critic_user_message = StructuredMessage[CriticInputMessage](
+            source="user",
+            content=CriticInputMessage(
+                task=task,
+                model_responses=model_responses,
+                evaluation_plan=evaluation_plan_str
+            )
+        )
+        critic_response = await critic.on_messages([critic_user_message], CancellationToken())
+        critic_feedback = safe_load_json(critic_response.chat_message.content)
+        if critic_feedback.get("decision", '') == 'accept':
+            break
+        plan_user_message = StructuredMessage[PlanInputMessage](
+            source="user",
+            content=PlanInputMessage(
+                task=task,
+                model_responses=model_responses,
+                convs=convs,
+                original_evaluation_plan=evaluation_plan_str,
+                feedback=critic_response.chat_message.content
+            )
+        )
+        planner_response = await planner.on_messages([plan_user_message], CancellationToken())
+        evaluation_plan_str = planner_response.chat_message.content
+        i += 1
+    return safe_load_json(evaluation_plan_str)
 
-async def run_pipeline(task, model_responses, convs=None, with_critic=True, judge_chat=True):
+
+async def run_pipeline(task, model_responses, convs=None, critic_round=0, judge_chat=True):
     print("--------------------Start Evaluation--------------------")
-    print(f"Enable Critic: {with_critic}\nEable Multi-round Judge: {judge_chat}")
+    print(f"Critic Round: {critic_round}\nMulti-round Judge: {judge_chat}")
 
     evaluation_plan, judge_results, final_judgement = None, None, None
 
@@ -118,18 +162,26 @@ async def run_pipeline(task, model_responses, convs=None, with_critic=True, judg
             convs=convs
         )
     )
-    for i in range(3):
-        try:
-            planner_response = await planner.on_messages([plan_user_message], CancellationToken())
-            evaluation_plan = safe_load_json(planner_response.chat_message.content)
-            break
-        except Exception as e:
-            print(f'Warning: generate plan fail! Exception: {e}. Try Again!')
-            continue
-    # If enable critic, then start planner-critic group chat
-    # If not enable critic, then parse planner response and assign judges
-    if with_critic:
-        pass
+    # Frist plan
+    planner_response = await planner.on_messages([plan_user_message], CancellationToken())
+    original_evaluation_plan = safe_load_json(planner_response.chat_message.content)
+
+    # If enable critic, then start planner-critic collaboration
+    if critic_round > 0:
+        critic = CriticAgent(name="critic")
+        evaluation_plan = await plan_critic_collaboration(
+            planner=planner, 
+            critic=critic, 
+            task=task, 
+            model_responses=model_responses, 
+            convs=convs, 
+            original_evaluation_plan=original_evaluation_plan, 
+            critic_round=critic_round
+        )
+    else:
+        evaluation_plan = copy.deepcopy(original_evaluation_plan)
+
+    # Parse planner response and assign judges
     if not evaluation_plan:
         return evaluation_plan, judge_results, final_judgement
     
@@ -156,7 +208,9 @@ async def run_pipeline(task, model_responses, convs=None, with_critic=True, judg
                 )
             )
             judge_response = await judge.on_messages([judge_user_message], CancellationToken())
-            judge_results[dimension_name] = safe_load_json(judge_response.chat_message.content)
+            one_judge_result = safe_load_json(judge_response.chat_message.content)
+            if one_judge_result:
+                judge_results[dimension_name] = one_judge_result
         # If enable judge chat, then start judges' group chat
         # If not enable judge chat, then aggreate judge results to final result
         if judge_chat:
@@ -187,7 +241,7 @@ if __name__ == "__main__":
         task, 
         model_responses, 
         convs=convs,
-        with_critic=False,
+        critic_round=0,
         judge_chat=False
     ))
 

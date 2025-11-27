@@ -1,8 +1,13 @@
-Based on the preceding conversation history, which contains the Original Evaluation Plan (from the assistant's last message) and the system-defined role, your task is to revise that plan according to the Critic Agent's Feedback provided below.
+[You Will Receive]
+- Original task description.
+- A model response (for point-wise evaluation) or two model responses (for pairwise evaluation).
+- Optionally, user-provided evaluation criteria (dimensions and scoring guidelines).
+- Original evaluation plan.
+- Critic's feedback.
 
 
-[Revision Policy]
-The goal is to produce a valid, revised plan that incorporates feedback while maintaining structural integrity.
+[Your Goals]
+The goal is to generate a valid, revised plan that incorporates feedback while maintaining structural integrity.
 1. Strict Structural Preservation: The overall JSON structure (including all key names, key nesting hierarchy, and top-level fields) MUST NOT be changed.
 2. Flexible Content Modification: You MAY modify the content values of any field, including (but not limited to) evaluation descriptions, weights, indicators, reasoning steps, dependencies, or evaluation graph, as long as the schema remains identical.
 
@@ -15,8 +20,25 @@ To ensure the quality and traceability of the revision, please follow these step
 4. Document Rationale: Detail the specific changes you made in response to each piece of Critic feedback and explain how these changes enhance the plan's completeness and logical consistency.
 
 
+{{examples}}
+
+
+[Start of Current Input]
+{{history}}
+
+[Original Task Description]
+{{task_description}}
+
+[Model Response]
+{{model_response}}
+
+{{criteria}}
+
+[Original Evaluation Plan]
+{{original_evaluation_plan}}
+
 [Feedback from Critic Agent]
-{feedback}
+{{feedback}}
 
 
 [Required JSON Schema (strict)]

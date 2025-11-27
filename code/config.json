@@ -13,31 +13,28 @@
     },
     "client-new": {
         "model_type": "open",
-        "model_name": "llama-3.1-8b-instruct",
-        "model_path": "/data/fwp/pretrained_model/llama-3.1-8b-instruct/",
-        "tokenizer_path": "/data/fwp/pretrained_model/llama-3.1-8b-instruct/"
+        "model_name": "qwen3-8b",
+        "model_path": "/data/fwp/pretrained_model/qwen3-8b/",
+        "tokenizer_path": "/data/fwp/pretrained_model/qwen3-8b/"
     },
     "planner": {
         "plan_prompt_path": "./prompts/plan.txt",
         "revise_prompt_path": "./prompts/plan-revise.txt",
         "max_new_tokens": 2048,
         "thinking": false,
-        "prt": false,
         "criteria_path": "",
         "example_paths": []
     },
     "critic": {
         "prompt_path": "./prompts/critic.txt",
-        "max_new_tokens": 512,
+        "max_new_tokens": 1024,
         "thinking": false,
-        "prt": false,
         "criteria_path": "",
         "example_paths": []
     },
     "judge": {
         "prompt_path": "./prompts/judge.txt",
         "max_new_tokens": 1024,
-        "thinking": false,
-        "prt": false
+        "thinking": false
     }
 }

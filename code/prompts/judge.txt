@@ -20,9 +20,9 @@
 [Required JSON Schema (strict)]
 {
   "dimension": "string",
-  "judgement": "string or number (score for pointwise; (Response 1 / Response 2 / Tie) for pairwise)",
-  "step_by_step_evaluation_process": "string (detailed step-by-step process during evaluation)",
-  "evidences": "array of strings (list of evidences you found in the context)",
+  "judgement": "For pointwise evaluation, return a specific score; For pairwise evaluation, return one of ['model_a', 'model_b', 'tie']",
+  "step_by_step_evaluation_process": "string, detailed step-by-step process during evaluation",
+  "evidences": [array of strings, list of evidences you found in the context],
   "confidence": "string (0-1)"
 }
 
@@ -64,5 +64,5 @@ Low Score Indicator: {{low_score_indicator}}
 
 
 [Output Constraints]
-- Output only JSON
+- Output only the required JSON
 - No extra text, prefix, comments

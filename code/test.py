@@ -1,6 +1,5 @@
 import asyncio
 import pandas as pd
-from tqdm import tqdm
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
@@ -20,7 +19,7 @@ def save_results(data, output_path):
 
 async def test_mtbench():
     input_path = "/data/fwp/workspace/benchmarks/pairwise/mt-bench/human.jsonl"
-    output_path = "/data/fwp/workspace/adaptive/result/mt-bench/plan-judge-llama3.xlsx"
+    output_path = "/data/fwp/workspace/adaptive/result/mt-bench/plan-judge-llama3.1-8b.xlsx"
 
     mtbench = load_jsonl(input_path)
     # mtbench = mtbench[0:1]

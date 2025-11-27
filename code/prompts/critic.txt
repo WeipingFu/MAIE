@@ -1,7 +1,7 @@
 [You Will Receive]
-- The original Task Description and model response(s) that the plan targets
-- The proposed Evaluation Plan JSON
-- (Optional) User-provided evaluation criteria (if any)
+- The original generation task and model response(s) that the plan targets.
+- Optionally, user-provided evaluation criteria (dimensions and scoring guidelines).
+- The proposed Evaluation Plan JSON.
 
 
 [Your Goals]
@@ -30,23 +30,23 @@
 }
 
 
-{examples}
+{{examples}}
 
 
 [Start of Current Input]
-[Original Task]
-{task_description}
+[Original Generation Task]
+{{task_description}}
 
 [Model Response]
-{model_response}
+{{model_response}}
+
+{{criteria}}
 
 [Evaluation Plan]
-{evaluation_plan}
-
-{criteria}
+{{evaluation_plan}}
 [End of Current Input]
 
 
 [Output Constraints]
-- Output only JSON
+- Output only the required JSON
 - No extra text, prefix, comments

@@ -1,16 +1,14 @@
 from typing import List, Sequence, Literal, Optional
 from autogen_agentchat.agents import BaseChatAgent
 from autogen_agentchat.base import Response
-from autogen_core.model_context import UnboundedChatCompletionContext
 from autogen_agentchat.messages import BaseChatMessage, TextMessage
-from autogen_core.models import SystemMessage, UserMessage
 from autogen_core import CancellationToken
 from pydantic import BaseModel, Field
 from jinja2 import Template
 
-from ..utils import load_json, read_text
-# from ..client import client_config, user_client
-from ..client_new import client_config, user_client
+from ..utils import load_json, read_text, safe_load_json
+# from ..client_llamacpp import client_config, user_client
+from ..client import client_config, user_client
 
 planner_config = load_json("./config.json").get("planner")
 
@@ -66,8 +64,7 @@ class UserPrompt:
         if convs and len(convs) > 0:
             history_str = '[Conversation History Between User and Models]\n'
             for idx, conv in enumerate(convs):
-                history_str += '[Turn {}]\nUser: {}\nModel A: {}\nModel B: {}\n'.format(str(idx+1), conv['user'], conv['a'], conv['b'])
-            history_str += '\n\n\n'
+                history_str += '[Turn {}]\n[User]\n{}\n[Model a]\n{}\n[Model b]\n{}\n\n'.format(str(idx+1), conv['user'], conv['a'], conv['b'])
         return history_str
     
     def get_user_criteria(self):
@@ -90,34 +87,35 @@ class UserPrompt:
                 examples.append(read_text(path))
             example_str = '\n\n'.join(['[Start of Example {}]\n{}\n[End of Example {}]'.format(i+1, ex, i+1) for i,ex in enumerate(examples)]) + '-'*40
         return example_str
+    
+    def get_model_response(self, model_responses):
+        mapping = {i: chr(ord('a') + i - 1) for i in range(1, 27)}
+        model_response_str = '\n'.join([f'[Response of Model {mapping[idx+1]}]\n{response}' for idx, response in enumerate(model_responses)])
+        return model_response_str
 
-    def generate_user_prompt(self, task, model_responses, feedback=None, convs=None):
+    def generate_user_prompt(self, task, model_responses, original_evaluation_plan=None, feedback=None, convs=None):
         if len(model_responses) == 1:
             eval_mode = 'pointwise'
         elif len(model_responses) == 2:
             eval_mode = 'pairwise'
         else:
             raise ValueError('The count of model_responses = {}, which is not supported!'.format(len(model_responses)))
-        # plan or revise
+        
+        template_vars = {
+            "examples": self.get_examplestr(),
+            "history": self.get_conv_history(convs),
+            "task_description": task,
+            "model_response": self.get_model_response(model_responses),
+            "criteria": self.get_user_criteria()    
+        }
         if self._mode == 'revise':
-            if not feedback:
-                raise ValueError('Empty feedback from CriticAgent!')
-            template_vars = {
-                "feedback": feedback
-            }
+            template_vars["original_evaluation_plan"] = original_evaluation_plan
+            template_vars["feedback"] = feedback
         else:
-            template_vars = {
-                "examples": self.get_examplestr(),
-                "history": self.get_conv_history(convs),
-                "task_description": task,
-                "evaluation_mode": eval_mode,
-                "model_response": '\n'.join(['[Response {}]\n{}'.format(i+1, output) for i,output in enumerate(model_responses)]),
-                "criteria": self.get_user_criteria()    
-            }
-        template = Template(self._user_prompt)
+            template_vars["evaluation_mode"] = eval_mode
+        template = Template(self._plan_prompt)
         content = template.render(**template_vars)
-        # print(f'User Prompt:\n{content}')
-        # content = self._user_prompt.format(**template_vars) 
+        print(f'User Prompt:\n{content}')
         return content
 
 
@@ -142,27 +140,43 @@ class PlannerAgent(BaseChatAgent):
         return (TextMessage,)
 
     async def on_messages(self, messages: Sequence[BaseChatMessage], cancellation_token: CancellationToken) -> Response:
-        print("PlannerAgent is working ...")
+        print(f"PlannerAgent is working, mode is {self._mode} ...")
         runtime_payload = messages[-1].content
         task = runtime_payload.task
         model_responses = runtime_payload.model_responses
         convs = runtime_payload.convs
-        content = self._user_prompt.generate_user_prompt(task, model_responses, convs=convs)
-        # result = await self._model_client.create(
-        #     [
-        #         SystemMessage(content=self._system_message),
-        #         UserMessage(content=content, source='user')
-        #     ],
-        #     json_output=PlannerResponse
-        # )
-        # # print(result)
-        # response_message = TextMessage(content=result.content, source=self.name)
+        original_evaluation_plan = runtime_payload.original_evaluation_plan
+        feedback = runtime_payload.feedback
+        content = self._user_prompt.generate_user_prompt(
+            task, 
+            model_responses, 
+            original_evaluation_plan=original_evaluation_plan,
+            feedback=feedback, 
+            convs=convs
+        )
+
+        # Call the LLM
+        model_messages = [
+            {'role': 'system', 'content': self._system_message},
+            {'role': 'user', 'content': content}
+        ]
         result = await self._model_client.call(
-            self._system_message, 
-            content, 
+            model_messages, 
+            thinking=planner_config.get("thinking"),
             max_new_tokens=planner_config.get("max_new_tokens"))
-        print(result)
-        response_message = TextMessage(content=result, source=self.name)
+        # print(result)
+        # validate LLM result
+        result = result.strip().replace('```json','').replace('```','')
+        clean_json_str = '{}'
+        try:
+            if self._mode == 'revise':
+                result = safe_load_json(result).get("revised_plan")
+            parsed = PlannerResponse.model_validate_json(result)
+            clean_json_str = parsed.model_dump_json(indent=2)
+        except Exception as e:
+            print("Warning: PlannerResponse validation failed, return empty json str. Exception:", e)
+            
+        response_message = TextMessage(content=clean_json_str, source=self.name)
         return Response(chat_message=response_message)
 
     async def on_reset(self, cancellation_token: CancellationToken) -> None:

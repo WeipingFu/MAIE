@@ -7,21 +7,25 @@ def extract_vanilla_judgement(json_str):
     if pd.isna(json_str):
         return None
 
-    text = json_str.strip()
+    text = json_str.strip().lower()
     cleaned = text
     if cleaned.startswith('"') and cleaned.endswith('"'):
         cleaned = cleaned[1:-1]
 
-    cleaned = cleaned.replace('""', '"')
+    cleaned = cleaned.replace('""', '"').replace('*','')
 
     try:
         data = json.loads(cleaned)
         return data.get("judgement", None)
     except Exception as e:
-        pattern = r'"judgement"\s*:\s*"([^"]+)"'
+        pattern = r'"?judgement"?\s*[:：]\s*"?([^"]+)"?'
         match = re.search(pattern, text)
-    if match:
-        return match.group(1)
+        if match:
+            return match.group(1)
+        if 'model_a' in text and 'model_b' not in text:
+            return 'model_a'
+        if 'model_b' in text and 'model_a' not in text:
+            return 'model_b'
     return None
 
 def handle_vanilla_excel(result_path, result_col, save_path=None):
@@ -37,7 +41,7 @@ def handle_vanilla_excel(result_path, result_col, save_path=None):
 
 
 if __name__ == "__main__":
-    result_path = '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/mt-bench/vanilla-llama3.1.xlsx'
+    result_path = '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/mt-bench/vanilla_cot/vanilla-llama3.1-8b-1.xlsx'
     result_col = 'vanilla_prompt'
     save_path = result_path
     handle_vanilla_excel(result_path, result_col, save_path)

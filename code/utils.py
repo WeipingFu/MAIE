@@ -52,3 +52,16 @@ def save_jsonl(data_list, file_path: str, ensure_ascii=False):
                      for item in data_list)
     with open(abs_path, 'w', encoding='utf-8') as f:
         f.writelines(jsonl_content)
+
+
+def safe_load_json(content):
+    if isinstance(content, str):
+        content = content.strip().replace('```json','').replace('```','')
+        try:
+            return json.loads(content)
+        except json.JSONDecodeError:
+            return {}
+    elif isinstance(content, dict):
+        return content
+    else:
+        return {}
