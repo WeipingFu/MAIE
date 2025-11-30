@@ -65,3 +65,9 @@ def safe_load_json(content):
         return content
     else:
         return {}
+
+import re
+def clean_json(content):
+    content = content.strip().replace('```json','').replace('```','')
+    content = re.sub(r'[\x00-\x1F]', '', content)
+    return content

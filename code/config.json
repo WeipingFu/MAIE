@@ -2,7 +2,7 @@
     "client": {
         "model_type": "open",
         "model_name": "llama-3.1-8b-instruct",
-        "model_path": "/data/fwp/pretrained_model/llama-3.1-8b-instruct-f16.gguf",
+        "model_path": "/data1/fwp/pretrained_model/llama-3.1-8b-instruct-f16.gguf",
         "n_ctx": 2048,
         "n_gpu_layers": 20,
         "json_output": true,
@@ -14,27 +14,36 @@
     "client-new": {
         "model_type": "open",
         "model_name": "qwen3-8b",
-        "model_path": "/data/fwp/pretrained_model/qwen3-8b/",
-        "tokenizer_path": "/data/fwp/pretrained_model/qwen3-8b/"
+        "model_path": "/data1/fwp/pretrained_model/qwen3-8b/",
+        "tokenizer_path": "/data1/fwp/pretrained_model/qwen3-8b/"
+    },
+    "client-vllm": {
+        "model_type": "open",
+        "model_name": "qwen3-8b",
+        "model_path": "/data1/fwp/pretrained_model/qwen3-8b/",
+        "tokenizer_path": "/data1/fwp/pretrained_model/qwen3-8b/",
+        "base_url": "http://localhost:8000/v1",
+        "api_key": "empty"
     },
     "planner": {
-        "plan_prompt_path": "./prompts/plan.txt",
-        "revise_prompt_path": "./prompts/plan-revise.txt",
+        "plan_prompt_path": "prompts/plan.txt",
+        "revise_prompt_path": "prompts/plan-revise.txt",
         "max_new_tokens": 2048,
         "thinking": false,
         "criteria_path": "",
         "example_paths": []
     },
     "critic": {
-        "prompt_path": "./prompts/critic.txt",
-        "max_new_tokens": 1024,
+        "prompt_path": "prompts/critic.txt",
+        "max_new_tokens": 512,
         "thinking": false,
         "criteria_path": "",
         "example_paths": []
     },
     "judge": {
-        "prompt_path": "./prompts/judge.txt",
-        "max_new_tokens": 1024,
-        "thinking": false
+        "prompt_path": "prompts/judge.txt",
+        "max_new_tokens": 512,
+        "thinking": false,
+        "batch_size": 2
     }
 }

@@ -5,7 +5,7 @@ from autogen_agentchat.messages import BaseChatMessage, TextMessage
 from autogen_core import CancellationToken
 from pydantic import BaseModel, Field
 from jinja2 import Template
-from ..utils import load_json, read_text, safe_load_json
+from ..utils import load_json, read_text, clean_json
 # from ..client_llamacpp import client_config, user_client
 from ..client import client_config, user_client
 
@@ -17,11 +17,9 @@ class JudgeResponse(BaseModel):
     """
     Structured response returned by the Judge Agent.
     """
-    dimension: str = Field(description="The specific dimension that the Agent judge.")
     judgement: str = Field(description="The judge result of current dimension and input.")
     step_by_step_evaluation_process: str = Field(description="Detailed step-by-step process during evaluation.")
-    evidences: Optional[List[str]] = Field(default_factory=list, description="List of evidences you found in the context.")
-    confidence: float = Field(description="The confidence of the Agent's judgement (0.0-1.0).")
+    confidence: str = Field(description="The confidence of the Agent's judgement (0.0-1.0).")
 
 
 # --- User prompt for Judge ---
@@ -39,19 +37,22 @@ class UserPrompt:
         return history_str
     
     def get_examplestr(self, example_paths):
+        example_str = ''
         if example_paths:
             examples = []
             for path in example_paths:
                 examples.append(read_text(path))
-            self.example_str = '\n\n'.join(['[Start of Example {}]\n{}\n[End of Example {}]'.format(i+1, ex, i+1) for i,ex in enumerate(examples)]) + '-'*40
+            example_str = '\n\n'.join(['[Start of Example {}]\n{}\n[End of Example {}]'.format(i+1, ex, i+1) for i,ex in enumerate(examples)]) + '-'*40
+        return example_str
 
-    def generate_user_prompt(self, task, model_responses, dimension_plan, convs=None, example_paths=None):
-        if len(model_responses) == 1:
-            eval_mode = 'pointwise'
-        elif len(model_responses) == 2:
-            eval_mode = 'pairwise'
-        else:
-            raise ValueError('The count of model_responses = {}, which is not supported!'.format(len(model_responses)))
+    def generate_user_prompt(self, task, model_responses, dimension_plan, eval_mode=None, convs=None, example_paths=None):
+        if not eval_mode:
+            if len(model_responses) == 1:
+                eval_mode = 'pointwise'
+            elif len(model_responses) == 2:
+                eval_mode = 'pairwise'
+            else:
+                raise ValueError('The count of model_responses = {}, which is not supported!'.format(len(model_responses)))
         template_vars = {
             "examples": self.get_examplestr(example_paths),
             "history": self.get_conv_history(convs),
@@ -68,7 +69,7 @@ class UserPrompt:
         }
         template = Template(self._user_prompt)
         content = template.render(**template_vars)
-        print(f'User Prompt:\n{content}')
+        # print(f'User Prompt:\n{content}')
         return content
 
 
@@ -95,11 +96,12 @@ class JudgeAgent(BaseChatAgent):
         task = runtime_payload.task
         model_responses = runtime_payload.model_responses
         dimension_plan = runtime_payload.dimension_plan
+        eval_mode = runtime_payload.eval_mode
         convs = runtime_payload.convs
         example_paths = runtime_payload.example_paths
         # print(dimension_plan)
         print(f"JudgeAgent is working, Dimension is {dimension_plan.get('name')}")
-        content = self._user_prompt.generate_user_prompt(task, model_responses, dimension_plan, convs, example_paths)
+        content = self._user_prompt.generate_user_prompt(task, model_responses, dimension_plan, eval_mode, convs, example_paths)
         # result = await self._model_client.create(
         #     [
         #         SystemMessage(content=self._system_message),
@@ -116,12 +118,12 @@ class JudgeAgent(BaseChatAgent):
         ]
         result = await self._model_client.call(
             messages,
-            thinking=judge_config.get("thinking"),
             max_new_tokens=judge_config.get("max_new_tokens"))
         
         # validate LLM result
-        result = result.strip().replace('```json','').replace('```','')
+        result = clean_json(result)
         clean_json_str = '{}'
+        # print(f'{self.name} Result: {result}\n')
         try:
             parsed = JudgeResponse.model_validate_json(result)
             clean_json_str = parsed.model_dump_json(indent=2)

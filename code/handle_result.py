@@ -3,29 +3,40 @@ import pandas as pd
 import re
 
 
-def extract_vanilla_judgement(json_str):
-    if pd.isna(json_str):
+def extract_vanilla_judgement(text):
+    if text is None or (isinstance(text, float) and pd.isna(text)):
         return None
 
-    text = json_str.strip().lower()
-    cleaned = text
-    if cleaned.startswith('"') and cleaned.endswith('"'):
-        cleaned = cleaned[1:-1]
+    if isinstance(text, dict):
+        return text.get("judgement")
 
-    cleaned = cleaned.replace('""', '"').replace('*','')
+    text = str(text).strip()
+    json_blocks = re.findall(r'\{[\s\S]*?\}', text)
+    if json_blocks:
+        last_json = json_blocks[-1]
+        try:
+            data = json.loads(last_json)
+            if isinstance(data, dict) and "judgement" in data:
+                return data["judgement"]
+        except Exception:
+            pass  
 
-    try:
-        data = json.loads(cleaned)
-        return data.get("judgement", None)
-    except Exception as e:
-        pattern = r'"?judgement"?\s*[:：]\s*"?([^"]+)"?'
-        match = re.search(pattern, text)
-        if match:
-            return match.group(1)
-        if 'model_a' in text and 'model_b' not in text:
-            return 'model_a'
-        if 'model_b' in text and 'model_a' not in text:
-            return 'model_b'
+    pattern = re.compile(
+        r'["\']?judgement["\']?\s*[:：]\s*["\']?(model_a|model_b|tie)["\']?',
+        re.IGNORECASE
+    )
+    match = pattern.search(text)
+    if match:
+        return match.group(1).lower()
+
+    lower_text = text.lower()
+    has_a = "model_a" in lower_text
+    has_b = "model_b" in lower_text
+    if has_a and not has_b:
+        return "model_a"
+    if has_b and not has_a:
+        return "model_b"
+
     return None
 
 def handle_vanilla_excel(result_path, result_col, save_path=None):
@@ -41,7 +52,7 @@ def handle_vanilla_excel(result_path, result_col, save_path=None):
 
 
 if __name__ == "__main__":
-    result_path = '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/mt-bench/vanilla_cot/vanilla-llama3.1-8b-1.xlsx'
+    result_path = '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/mt-bench/vanilla_cot/vanilla-qwen3-8b.xlsx'
     result_col = 'vanilla_prompt'
     save_path = result_path
     handle_vanilla_excel(result_path, result_col, save_path)

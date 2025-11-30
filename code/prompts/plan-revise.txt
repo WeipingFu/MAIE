@@ -43,14 +43,38 @@ To ensure the quality and traceability of the revision, please follow these step
 
 [Required JSON Schema (strict)]
 {
-  "revised_plan": {
-    // The complete, revised evaluation plan JSON (structure must be identical to the original plan)
-  },
-  "revision_rationale": "Text detailing all modifications and their reasons"
+  "task_type": "",
+  "sub_task": "",
+  "evaluation_mode": "pointwise or pairwise",
+  "evaluation_dimensions": [
+    {
+      "name": "",
+      "definition": "",
+      "rationale": "",
+      "weight": "",                      // decimal between 0-1, sum=1, e.g., 0.5
+      "evaluation_granularity": "",      // "holistic" - Judges the response as a whole; "localized" - focuses on specific portions or elements of the response; "stepwise" - Examines each reasoning or generation step within the response.
+      "scoring_scale": "",               // e.g., "1-5", "0-100" for pointwise evaluation; or "binary preference" for pairwise evaluation
+      "high_score_indicator": "",        // description of high score evaluation criteria
+      "low_score_indicator": "",         // description of low score evaluation criteria
+      "dependencies": [""],              // optional list of related dimension names
+      "assigned_agent": {
+        "role_name": "",
+        "role_description": "",          // the role the agent plays, e.g. "Your are a xxxx, responsible for xxxx"
+        "evaluation_task": "",           // concise description of what this agent must judge
+        "evaluation_steps": [            // detailed steps that the judge agent must follow
+          "Step 1: ...",
+          "Step 2: ...",
+          "Step 3: ..."
+        ]
+      }
+    },
+    ...
+  ]
 }
 
 
 [Output Constraints]
-- JSON Structure: The final output must follow the above JSON structure. The revised plan's structure must be the same with original plan.
-- Content Modification: Only modify the content values within revised_plan to address the Critic's feedback.
-- Output only the final JSON result, without any additional text or explanation.
+- JSON Structure: The revised plan's structure must be the same with original plan as described in the Required JSON Schema
+- Content Modification: Modify the content values within revised_plan to address the Critic's feedback. Do not directly copy the contents of the original evaluation plan
+- Output only the required JSON
+- No extra text, prefix, comments

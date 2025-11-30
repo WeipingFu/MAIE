@@ -6,7 +6,7 @@ from autogen_core import CancellationToken
 from pydantic import BaseModel, Field
 from jinja2 import Template
 
-from ..utils import load_json, read_text, safe_load_json
+from ..utils import load_json, read_text, clean_json
 # from ..client_llamacpp import client_config, user_client
 from ..client import client_config, user_client
 
@@ -93,14 +93,14 @@ class UserPrompt:
         model_response_str = '\n'.join([f'[Response of Model {mapping[idx+1]}]\n{response}' for idx, response in enumerate(model_responses)])
         return model_response_str
 
-    def generate_user_prompt(self, task, model_responses, original_evaluation_plan=None, feedback=None, convs=None):
-        if len(model_responses) == 1:
-            eval_mode = 'pointwise'
-        elif len(model_responses) == 2:
-            eval_mode = 'pairwise'
-        else:
-            raise ValueError('The count of model_responses = {}, which is not supported!'.format(len(model_responses)))
-        
+    def generate_user_prompt(self, task, model_responses, eval_mode=None, original_evaluation_plan=None, feedback=None, convs=None):
+        if not eval_mode:
+            if len(model_responses) == 1:
+                eval_mode = 'pointwise'
+            elif len(model_responses) == 2:
+                eval_mode = 'pairwise'
+            else:
+                raise ValueError('The count of model_responses = {}, which is not supported!'.format(len(model_responses)))
         template_vars = {
             "examples": self.get_examplestr(),
             "history": self.get_conv_history(convs),
@@ -113,16 +113,16 @@ class UserPrompt:
             template_vars["feedback"] = feedback
         else:
             template_vars["evaluation_mode"] = eval_mode
-        template = Template(self._plan_prompt)
+        template = Template(self._user_prompt)
         content = template.render(**template_vars)
-        print(f'User Prompt:\n{content}')
+        # print(f'User Prompt:\n{content}')
         return content
 
 
 class PlannerAgent(BaseChatAgent):
     def __init__(
         self,
-        name: str = "planner",
+        name: str = "Planner",
         description: str = "An agent that generate the evaluation plan.",
         model: str = client_config.get("model_name", "model"),
         mode: str = "plan"                          # plan or revise
@@ -144,12 +144,14 @@ class PlannerAgent(BaseChatAgent):
         runtime_payload = messages[-1].content
         task = runtime_payload.task
         model_responses = runtime_payload.model_responses
+        eval_mode = runtime_payload.eval_mode
         convs = runtime_payload.convs
         original_evaluation_plan = runtime_payload.original_evaluation_plan
         feedback = runtime_payload.feedback
         content = self._user_prompt.generate_user_prompt(
             task, 
             model_responses, 
+            eval_mode=eval_mode,
             original_evaluation_plan=original_evaluation_plan,
             feedback=feedback, 
             convs=convs
@@ -162,15 +164,13 @@ class PlannerAgent(BaseChatAgent):
         ]
         result = await self._model_client.call(
             model_messages, 
-            thinking=planner_config.get("thinking"),
             max_new_tokens=planner_config.get("max_new_tokens"))
         # print(result)
         # validate LLM result
-        result = result.strip().replace('```json','').replace('```','')
+        result = clean_json(result)
         clean_json_str = '{}'
+        # print(f'{self.name} Result: {result}\n')
         try:
-            if self._mode == 'revise':
-                result = safe_load_json(result).get("revised_plan")
             parsed = PlannerResponse.model_validate_json(result)
             clean_json_str = parsed.model_dump_json(indent=2)
         except Exception as e:

@@ -44,8 +44,8 @@ Follow steps:
       "weight": "",                      // decimal between 0-1, sum=1, e.g., 0.5
       "evaluation_granularity": "",      // "holistic" - Judges the response as a whole; "localized" - focuses on specific portions or elements of the response; "stepwise" - Examines each reasoning or generation step within the response.
       "scoring_scale": "",               // e.g., "1-5", "0-100" for pointwise evaluation; or "binary preference" for pairwise evaluation
-      "high_score_indicator": "",
-      "low_score_indicator": "",
+      "high_score_indicator": "",        // description of high score evaluation criteria
+      "low_score_indicator": "",         // description of low score evaluation criteria
       "dependencies": [""],              // optional list of related dimension names
       "assigned_agent": {
         "role_name": "",

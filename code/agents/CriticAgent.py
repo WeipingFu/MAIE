@@ -6,7 +6,7 @@ from autogen_core import CancellationToken
 from pydantic import BaseModel, Field
 from jinja2 import Template
 
-from ..utils import load_json, read_text
+from ..utils import load_json, read_text, clean_json
 from ..client import client_config, user_client
 
 critic_config = load_json("./config.json").get("critic")
@@ -18,10 +18,8 @@ class CriticResponse(BaseModel):
     Structured response returned by the Critic Agent.
     """
     decision: Literal["accept", "revise"] = Field(description="The decision Critic Agent make.")
-    confidence: float = Field(description="The confidence of Critic Agent's decision.")
     issues: Optional[List[str]] = Field(default_factory=list, description="Optional list of issues of the evaluation plan. If there are no issues, then return a blank list.")
-    suggestion: str = Field(description="if the decision is 'revise', return suggestions for revision; if the decision is 'accept', return empty string.")
-    rationale: str = Field(description="The rationale for this decision.")
+    suggestion: str = Field(description="if decision = revise, return suggestions for revision; if decision = accept, return a short reason for this decision.")
 
 
 # --- User prompt for Critic ---
@@ -65,13 +63,13 @@ class UserPrompt:
         }
         template = Template(self._user_prompt)
         content = template.render(**template_vars)
-        print(f'User Prompt:\n{content}')
+        # print(f'User Prompt:\n{content}')
         return content
 
 class CriticAgent(BaseChatAgent):
     def __init__(
         self,
-        name: str = "critic",
+        name: str = "Critic",
         description: str = "An agent that review the evaluation plan and provide feedback.",
         model: str = client_config.get("model_name", "model")
     ):
@@ -101,12 +99,13 @@ class CriticAgent(BaseChatAgent):
         ]
         result = await self._model_client.call(
             messages,
-            thinking=critic_config.get("thinking"),
-            max_new_tokens=critic_config.get("max_new_tokens"))
+            max_new_tokens=critic_config.get("max_new_tokens")
+        )
         
         # validate LLM result
-        result = result.strip().replace('```json','').replace('```','')
+        result = clean_json(result)
         clean_json_str = '{}'
+        # print(f'{self.name} Result: {result}\n')
         try:
             parsed = CriticResponse.model_validate_json(result)
             clean_json_str = parsed.model_dump_json(indent=2)

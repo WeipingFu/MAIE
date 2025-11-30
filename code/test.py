@@ -1,7 +1,8 @@
 import asyncio
 import pandas as pd
+from tqdm import tqdm
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 
 from .main import run_pipeline          
 from .utils import load_jsonl, save_jsonl   
@@ -18,15 +19,19 @@ def save_results(data, output_path):
 
 
 async def test_mtbench():
-    input_path = "/data/fwp/workspace/benchmarks/pairwise/mt-bench/human.jsonl"
-    output_path = "/data/fwp/workspace/adaptive/result/mt-bench/plan-judge-llama3.1-8b.xlsx"
+    input_path = "/data1/fwp/workspace/llmeval/benchmarks/pairwise/mt-bench/human.jsonl"
+    # input_path = "/data/fwp/workspace/adaptive/result/mt-bench/plan-judge-llama3.1-8b.xlsx"
+    output_path = "/data1/fwp/workspace/llmeval/adaptive/result/mt-bench/plan-critic-3-judge-qwen3-8b.xlsx"
 
     mtbench = load_jsonl(input_path)
-    # mtbench = mtbench[0:1]
+    # mtbench = mtbench[2432:]
+    # mtbench = pd.read_excel(input_path)
+    # mtbench = mtbench[mtbench['judgement'].isna()].to_dict(orient='records')
+    
     print(f'------------------------Start testing. Load {len(mtbench)} data.------------------------')
     new_data = []
     fail_count = 0
-    for idx, item in enumerate(mtbench):
+    for idx, item in tqdm(enumerate(mtbench), total=len(mtbench)):
         print(f'Handle the item idx={idx}')
         convs = None
         if int(item['turn']) > 1:
@@ -42,16 +47,18 @@ async def test_mtbench():
         # ==== run_pipeline ====
         task = item['question']
         model_responses = [item['model_a_response'], item['model_b_response']]
-        evaluation_plan, judge_results, final_judgement = await run_pipeline(
+        evaluation_plan, judge_results, final_judgement, revise_count = await run_pipeline(
             task=task,
             model_responses=model_responses,
+            eval_mode='pairwise',
             convs=convs,
-            with_critic=False,
+            critic_round=3,
             judge_chat=False
         )
         item['evaluation_plan'] = evaluation_plan
         item['judge_results'] = judge_results
         item['judgement'] = final_judgement
+        item['plan_revise_count'] = revise_count
         if not final_judgement:
             fail_count += 1
         new_data.append(item)

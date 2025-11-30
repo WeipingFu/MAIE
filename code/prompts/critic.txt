@@ -13,7 +13,7 @@
    - Measurability: Can each dimension be automatically or humanly measured? Are the high/low score indicators specific and checkable?
    - Dependencies: Are dependencies among dimensions reasonable, necessary, and well-stated?
    - Executability: Are evaluation steps concrete, unambiguous, and runnable by Judge Agents?
-   - Internal Consistency: Do dimensions -> indicators -> dependencies -> evaluation steps form a coherent and actionable chain?
+   - Internal Consistency: Do evaluation mode -> dimensions -> scoring scales -> score indicators -> dependencies -> evaluation steps form a coherent and actionable chain?
 
 2. Check each of the checklist aspects one by one and justify your critique only based on explicit contents in the plan.
 
@@ -22,11 +22,9 @@
 
 [Required JSON Schema (strict)]
 {
-  "decision": "accept" or "revise",
-  "confidence": "between 0 and 1",
+  "decision": "accept or revise",
   "issues": ["list of issues, if there are no issues, then return a blank list"],
-  "suggestion": "string, if decision = revise, return suggestions for revision; if decision = accept, return empty string",
-  "rationale": "short explanation"
+  "suggestion": "string, if decision = revise, return suggestions for revision; if decision = accept, return a short reason for this decision"
 }
 
 
