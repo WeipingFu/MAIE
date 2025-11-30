@@ -1,7 +1,0 @@
-{
-    "gpt-4o": {"tier": 3, "cost": 10.0, "task_type": "common", "model_family": "gpt", "model_type": "close", "model_path":"", "tokenizer_path":""},
-    "claude-3.5-pro": {"tier": 3, "cost": 10.0, "task_type": "common", "model_family": "claude", "model_type": "close", "model_path":"", "tokenizer_path":""},
-    "llama-3.1-8b-instruct": {"tier": 2, "cost": 2.0, "type": "common", "model_family": "llama", "model_type": "open", "model_path":"/data1/fwp/pretrained_model/llama-3.1-8b-instruct", "tokenizer_path":"/data1/fwp/pretrained_model/llama-3.1-8b-instruct"},
-    "llama-3-8b-instruct": {"tier": 2, "cost": 2.0, "type": "common", "model_family": "llama", "model_type": "open", "model_path":"/data1/fwp/pretrained_model/llama-3-8b-instruct", "tokenizer_path":"/data1/fwp/pretrained_model/llama-3-8b-instruct"},
-    "Qwen2.5-Coder-7B-Instruct": {"tier": 3, "cost": 2.0, "task_type": "code", "model_family": "qwen", "model_type": "open", "model_path":"/data1/fwp/pretrained_model/qwen2.5-coder-7b-instruct", "tokenizer_path":"/data1/fwp/pretrained_model/qwen2.5-coder-7b-instruct"}
-}
