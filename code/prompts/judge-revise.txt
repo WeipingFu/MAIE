@@ -5,22 +5,30 @@
 - Scoring scale and the indicators of high/low scores.
 - Evaluation Granularity: The scope and depth of the evaluation. "holistic" - Judges the response as a whole; "localized" - focuses on specific portions or elements of the response; "stepwise" - evaluates each reasoning or generation step individually.
 - Evaluation Steps: Step-by-step guidance on how to conduct the evaluation.
+- Your previous judgement on this instance.
+- Related Judgement Results from Associated Dimensions (your dependencies). These results are provided for reference only. You should consider their reasoning and conclusions, but make your final judgement independently.
 
 
 [Your Goals]
-1. Perform a detailed, fair, and explainable judgment based on the provided evaluation context, following [Evaluation Steps] given below.
-
-2. Output Formatting: Structure your result strictly in valid JSON according to the required schema below. Do not include any text outside the JSON.
+1. Review your previous judgement in light of the dependency results.
+2. Determine whether your original judgement should be:
+   - Kept unchanged, or
+   - Adjusted based on new cross-dimensional evidence.
+3. Produce a detailed, fair, and explainable final judgement by following the given Evaluation Steps.
+4. Output Formatting: Structure your result strictly in valid JSON according to the required schema below. Do not include any text outside the JSON.
 
 
 [Key Principles]
+- Independence: Do not blindly follow dependency results. Use them only as supportive or conflicting evidence.
+- Consistency: Your revised judgement must remain consistent with your own evaluation dimension.
 - Objectivity: Avoid personal, lengthy, or positional bias, and use clear textual evidence or reasoning to justify your decision.
+- Justification: If your judgement changes, clearly justify *why* the dependency information leads to the revision.
 
 
 [Required JSON Schema (strict)]
 {
   "judgement": "For pointwise evaluation, return a specific score; For pairwise evaluation, return one of ['model_a', 'model_b', 'tie']",
-  "step_by_step_evaluation_process": "string, detailed execution process followed the guidance of the given evaluation steps",
+  "step_by_step_evaluation_process": "string, detailed execution process that follow the evaluation steps and may include how dependency results were considered",
   "confidence": "string (0-1)"
 }
 
@@ -58,6 +66,12 @@ Low Score Indicator: {{low_score_indicator}}
 
 [Evaluation Steps]
 {{steps}}
+
+[Previous Judgement]
+{{first_judgement}}
+
+[Associated Dimension Results]
+{{dependency_results}}
 
 [End of Current Input]
 

@@ -8,6 +8,7 @@ from jinja2 import Template
 from ..utils import load_json, read_text, clean_json
 # from ..client_llamacpp import client_config, user_client
 from ..client import client_config, user_client
+import json
 
 judge_config = load_json("./config.json").get("judge")
 
@@ -24,8 +25,12 @@ class JudgeResponse(BaseModel):
 
 # --- User prompt for Judge ---
 class UserPrompt:
-    def __init__(self):
-        self._user_prompt = read_text(judge_config.get("prompt_path", "../prompts/judge.txt"))
+    def __init__(self, mode='judge'):
+        self._mode = mode
+        if mode == 'revise':
+            self._user_prompt = read_text(judge_config.get("revise_prompt_path", "../prompts/judge-revise.txt"))
+        else:
+            self._user_prompt = read_text(judge_config.get("judge_prompt_path", "../prompts/judge.txt"))
 
     def get_conv_history(self, convs):
         history_str = ''
@@ -44,8 +49,14 @@ class UserPrompt:
                 examples.append(read_text(path))
             example_str = '\n\n'.join(['[Start of Example {}]\n{}\n[End of Example {}]'.format(i+1, ex, i+1) for i,ex in enumerate(examples)]) + '-'*40
         return example_str
+    
+    def get_dependency_results(self, dependency_result_dict):
+        dependency_results = ''
+        if dependency_result_dict and len(dependency_result_dict) > 0:
+            dependency_results = '\n\n'.join([f'[Result of Dimension {key}]\n{result}' for key, result in dependency_result_dict.items()])
+        return dependency_results
 
-    def generate_user_prompt(self, task, model_responses, dimension_plan, eval_mode=None, convs=None, example_paths=None):
+    def generate_user_prompt(self, task, model_responses, dimension_plan, first_judgement='', dependency_results_dict=None, eval_mode=None, convs=None, example_paths=None):
         if not eval_mode:
             if len(model_responses) == 1:
                 eval_mode = 'pointwise'
@@ -67,6 +78,9 @@ class UserPrompt:
             "granularity": dimension_plan.get("evaluation_granularity"),
             "steps": dimension_plan.get("assigned_agent").get("evaluation_steps")
         }
+        if self._mode == 'revise':
+            template_vars["first_judgement"] = json.dumps(first_judgement)
+            template_vars["dependency_results"] = self.get_dependency_results(dependency_results_dict)
         template = Template(self._user_prompt)
         content = template.render(**template_vars)
         # print(f'User Prompt:\n{content}')
@@ -78,14 +92,15 @@ class JudgeAgent(BaseChatAgent):
         self,
         name: str = "Judge",
         description: str = "An agent that judge model's response(s) for given task.",
-        model: str = client_config.get("model_name", "model")
+        model: str = client_config.get("model_name", "model"),
+        mode: str = "judge"
     ):
         super().__init__(name=name, description=description)
         # self._model_context = UnboundedChatCompletionContext()
         self._model_client = user_client
         self._system_message = "You are a highly specialized Judge Agent. Your task is to evaluate one assigned dimension of the response and perform a structured judgment based on the provided context and the criteria for your specific dimension."
         self._model = model
-        self._user_prompt = UserPrompt()
+        self._user_prompt = UserPrompt(mode)
         
     @property
     def produced_message_types(self) -> Sequence[type[BaseChatMessage]]:
@@ -96,12 +111,16 @@ class JudgeAgent(BaseChatAgent):
         task = runtime_payload.task
         model_responses = runtime_payload.model_responses
         dimension_plan = runtime_payload.dimension_plan
+        first_judgement = runtime_payload.first_judgement
+        dependency_result_dict = runtime_payload.dependency_result_dict
         eval_mode = runtime_payload.eval_mode
         convs = runtime_payload.convs
         example_paths = runtime_payload.example_paths
         # print(dimension_plan)
         print(f"JudgeAgent is working, Dimension is {dimension_plan.get('name')}")
-        content = self._user_prompt.generate_user_prompt(task, model_responses, dimension_plan, eval_mode, convs, example_paths)
+        content = self._user_prompt.generate_user_prompt(
+            task, model_responses, dimension_plan, first_judgement,
+            dependency_result_dict, eval_mode, convs, example_paths)
         # result = await self._model_client.create(
         #     [
         #         SystemMessage(content=self._system_message),

@@ -2,7 +2,7 @@ import asyncio
 import pandas as pd
 from tqdm import tqdm
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 from .main import run_pipeline          
 from .utils import load_jsonl, save_jsonl   
@@ -19,12 +19,11 @@ def save_results(data, output_path):
 
 
 async def test_mtbench():
-    input_path = "/data1/fwp/workspace/llmeval/benchmarks/pairwise/mt-bench/human.jsonl"
-    # input_path = "/data/fwp/workspace/adaptive/result/mt-bench/plan-judge-llama3.1-8b.xlsx"
-    output_path = "/data1/fwp/workspace/llmeval/adaptive/result/mt-bench/plan-critic-3-judge-qwen3-8b.xlsx"
+    input_path = "/autodl-fs/data/maie/benchmarks/pairwise/mt-bench/human.jsonl"
+    output_path = "/autodl-fs/data/maie/result/mt-bench/plan-critic-3-judge-true-qwen3-8b-1.xlsx"
 
     mtbench = load_jsonl(input_path)
-    # mtbench = mtbench[2432:]
+    mtbench = mtbench[11:]
     # mtbench = pd.read_excel(input_path)
     # mtbench = mtbench[mtbench['judgement'].isna()].to_dict(orient='records')
     
@@ -47,20 +46,23 @@ async def test_mtbench():
         # ==== run_pipeline ====
         task = item['question']
         model_responses = [item['model_a_response'], item['model_b_response']]
-        evaluation_plan, judge_results, final_judgement, revise_count = await run_pipeline(
-            task=task,
-            model_responses=model_responses,
+        evaluation_plan, judge_results, final_judgement, plan_revise_count, judge_revise_count = await run_pipeline(
+            task, 
+            model_responses, 
             eval_mode='pairwise',
             convs=convs,
             critic_round=3,
-            judge_chat=False
+            judge_chat=True
         )
         item['evaluation_plan'] = evaluation_plan
         item['judge_results'] = judge_results
         item['judgement'] = final_judgement
-        item['plan_revise_count'] = revise_count
+        item['plan_revise_count'] = plan_revise_count
+        item['judge_revise_count'] = judge_revise_count
+
         if not final_judgement:
             fail_count += 1
+
         new_data.append(item)
         if len(new_data) % 2 and len(new_data) > 0:
             save_results(new_data, output_path)

@@ -52,7 +52,7 @@ class PlannerResponse(BaseModel):
 
 # --- User prompt for Planner ---
 class UserPrompt:
-    def __init__(self, mode):
+    def __init__(self, mode='plan'):
         self._mode = mode
         if self._mode == 'revise':
             self._user_prompt = read_text(planner_config.get("revise_prompt_path", "../prompts/plan-revise.txt"))

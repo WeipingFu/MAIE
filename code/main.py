@@ -23,6 +23,8 @@ class JudgeInputMessage(BaseModel):
     task: str
     model_responses: List
     dimension_plan: dict
+    first_judgement: Optional[dict] = None
+    dependency_result_dict: Optional[dict] = None
     eval_mode: Optional[str] = None
     convs: Optional[List] = None
     example_paths: Optional[List] = None
@@ -116,8 +118,8 @@ def aggregate_final_result(plan_json, judge_results, eval_mode=None):
 
 async def plan_critic_collaboration(task, model_responses, eval_mode, convs, original_evaluation_plan, critic_round):
     print('--------------------Start Planner-Critic Collaboration--------------------')
-    planner = PlannerAgent(name='reviser', mode='revise')
-    critic = CriticAgent(name="critic")
+    planner = PlannerAgent(name='Reviser', mode='revise')
+    critic = CriticAgent(name="Critic")
     i = 0
     evaluation_plan_str = json.dumps(original_evaluation_plan)
     # try until exced critic_round
@@ -153,14 +155,17 @@ async def plan_critic_collaboration(task, model_responses, eval_mode, convs, ori
         i += 1
     return safe_load_json(evaluation_plan_str), i
 
-async def run_one_judge(judge, task, model_responses, dimension_plan, eval_mode, convs):
+async def run_one_judge(judge, task, model_responses, dimension_plan, first_judgement, dependency_result_dict, eval_mode, convs):
     dimension_name = dimension_plan['name']
+    is_revise = False
     judge_user_message = StructuredMessage[JudgeInputMessage](
         source="user",
         content=JudgeInputMessage(
             task=task,
             model_responses=model_responses,
             dimension_plan=dimension_plan,
+            first_judgement=first_judgement,
+            dependency_result_dict=dependency_result_dict,
             eval_mode=eval_mode,
             convs=convs,
             example_paths=None
@@ -168,7 +173,10 @@ async def run_one_judge(judge, task, model_responses, dimension_plan, eval_mode,
     )
     judge_response = await judge.on_messages([judge_user_message], CancellationToken())
     one_judge_result = safe_load_json(judge_response.chat_message.content)
-    return dimension_name, one_judge_result
+    if first_judgement and first_judgement.get('judgement', '') != one_judge_result.get('judgement', ''):
+        is_revise = True
+    return dimension_name, one_judge_result, is_revise
+
 
 async def run_pipeline(task, model_responses, eval_mode=None, convs=None, critic_round=0, judge_chat=True):
     print("--------------------Start Evaluation--------------------")
@@ -179,15 +187,16 @@ async def run_pipeline(task, model_responses, eval_mode=None, convs=None, critic
         elif len(model_responses) == 2:
             eval_mode = 'pairwise'
         else:
-            raise ValueError('The count of model_responses = {}, which is not supported!'.format(len(model_responses)))
+            print('The count of model_responses = {}, which is not supported!'.format(len(model_responses)))
+            return None, None, None, -1, -1
         
     print(f"Evaluation Mode: {eval_mode}, Critic Round: {critic_round}, Multi-round Judge: {judge_chat}")
 
     evaluation_plan, judge_results, final_judgement = None, None, None
-    revise_count = -1
+    plan_revise_count, judge_revise_count = -1, -1
 
     # Initialize PlannerAgent
-    planner = PlannerAgent(name='planner', mode='plan')
+    planner = PlannerAgent(name='Planner', mode='plan')
     plan_user_message = StructuredMessage[PlanInputMessage](
         source="user",
         content=PlanInputMessage(
@@ -197,16 +206,16 @@ async def run_pipeline(task, model_responses, eval_mode=None, convs=None, critic
             convs=convs
         )
     )
-    # Frist plan
+    # 1. Frist plan
     planner_response = await planner.on_messages([plan_user_message], CancellationToken())
     original_evaluation_plan = safe_load_json(planner_response.chat_message.content)
 
     if not original_evaluation_plan or len(original_evaluation_plan) == 0:
-        return None, None, None, revise_count
-
-    # If enable critic, then start planner-critic collaboration
+        return None, None, None, plan_revise_count, judge_revise_count
+    
+    # 2. If enable critic, then start planner-critic collaboration
     if critic_round > 0:
-        evaluation_plan, revise_count = await plan_critic_collaboration( 
+        evaluation_plan, plan_revise_count = await plan_critic_collaboration( 
             task=task, 
             model_responses=model_responses,
             eval_mode=eval_mode,
@@ -219,9 +228,9 @@ async def run_pipeline(task, model_responses, eval_mode=None, convs=None, critic
     # print(f'Evaluation Plan\n{evaluation_plan}')
 
     if not evaluation_plan or len(evaluation_plan) == 0:
-        return None, None, None, revise_count
+        return None, None, None, plan_revise_count, judge_revise_count
     
-    # Parse planner response and assign judges
+    # 3. Parse planner response and assign judges
     try:
         dimensions = evaluation_plan.get("evaluation_dimensions")
         dimension_names = [d['name'] for d in dimensions]
@@ -229,28 +238,58 @@ async def run_pipeline(task, model_responses, eval_mode=None, convs=None, critic
         print(f"Dimensions are: {dimension_names}")
 
         # Initialize JudgeAgent
-        judge = JudgeAgent(name='judge')
+        judge = JudgeAgent(name='Judge', mode='judge')
         judge_results = {k['name']:None for k in dimensions}
-        # Judge each dimension independently
+
+        # 3.1. Judge each dimension independently
         judge_tasks = [
-            run_one_judge(judge, task, model_responses, dimension_plan, eval_mode, convs) 
+            run_one_judge(judge, task, model_responses, dimension_plan, None, None, eval_mode, convs)
             for dimension_plan in dimensions
         ]
+        # Get frist judgements
         judge_outputs = await asyncio.gather(*judge_tasks, return_exceptions=True)
-        for dimension_name, one_judge_result in judge_outputs:
+        for item in judge_outputs:
+            if isinstance(item, Exception):
+                print("Judge task failed with exception:", repr(item))
+                continue  
+            dimension_name, one_judge_result, is_revise = item
             if one_judge_result and len(one_judge_result) > 0:
                 judge_results[dimension_name] = one_judge_result
-    
-        # If enable judge chat, then start judges' group chat
-        # If not enable judge chat, then aggreate judge results to final result
+
+        # 3.2. If enable judge chat, then start related judges' group chat
         if judge_chat:
-            pass
+            print('--------------------Start Judge Chat--------------------')
+            judge_revise_tasks = []
+            revise_judge = JudgeAgent(name="ReviseJudge", mode='revise')
+            # Add judge chat task if there are dependencies
+            for dimension_plan in dimensions:
+                dimension_name = dimension_plan.get('name')
+                dependencies = [x for x in dimension_plan.get('dependencies',[]) if x in dimension_names and x != dimension_name]
+                dependency_result_dict = {k:judge_results[k] for k in dependencies}
+                print(f"Dimension: {dimension_name}, Dependencies: {dimension_plan.get('dependencies',[])} {dependencies}")
+                if len(dependency_result_dict) > 0:
+                    judge_revise_tasks.append(
+                        run_one_judge(revise_judge, task, model_responses, dimension_plan, 
+                        judge_results[dimension_name], dependency_result_dict, eval_mode, convs) 
+                    )
+            # Start judge chat
+            if len(judge_revise_tasks) > 0:
+                judge_revise_count = 0
+                judge_revise_outputs = await asyncio.gather(*judge_revise_tasks, return_exceptions=True)
+                # Update judge results
+                for dimension_name, one_judge_result, is_revise in judge_revise_outputs:
+                    if one_judge_result and len(one_judge_result) > 0:
+                        judge_results[dimension_name] = one_judge_result
+                        if is_revise:
+                            judge_revise_count += 1
+
+        # 3.3. Aggreate judge results to final result
         print(f"--------------------Aggregate {len(judge_results)} Results--------------------")
         final_judgement = aggregate_final_result(evaluation_plan, judge_results, eval_mode)
     except Exception as e:
         print(f'Evaluation Fail! Exception: {e}')
     print('--------------------End of Evaluation--------------------')
-    return evaluation_plan, judge_results, final_judgement, revise_count
+    return evaluation_plan, judge_results, final_judgement, plan_revise_count, judge_revise_count
 
 
 if __name__ == "__main__":
@@ -262,16 +301,16 @@ if __name__ == "__main__":
         "AI helps many industries. It can be dangerous and might replace jobs. Healthcare and finance are some examples, and people want laws for AI."
     ]
     convs = None
-    evaluation_plan, judge_results, final_judgement, revise_count = asyncio.run(run_pipeline(
+    evaluation_plan, judge_results, final_judgement, plan_revise_count, judge_revise_count = asyncio.run(run_pipeline(
         task, 
         model_responses, 
         eval_mode='pairwise',
         convs=convs,
         critic_round=3,
-        judge_chat=False
+        judge_chat=True
     ))
     print(f'Evaluation Plan\n{evaluation_plan}')
     print(f'Judge Results\n{judge_results}')
     print(f'Final Judgement: {final_judgement}')
-    print(f'Revise Count: {revise_count}')
-  
+    print(f'Plan Revise Count: {plan_revise_count}')
+    print(f'Judge Revise Count: {judge_revise_count}')

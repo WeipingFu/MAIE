@@ -9,7 +9,7 @@ from openai import OpenAI
 import asyncio
 
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = '3'
+os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 
 client_config = load_json("config.json").get("client-new")
 client_vllm_config = load_json("config.json").get("client-vllm")
