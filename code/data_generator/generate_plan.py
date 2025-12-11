@@ -170,7 +170,7 @@ def apply_batch():
     save_jsonl(new_data, save_path)
     print(f'Save {len(new_data)} data to {save_path}!')
 
-def append_messages(prompt_path, data_path, save_path):
+def append_messages(prompt_path, data_path, save_path, for_train=True):
     new_data = []
     data = load_jsonl(data_path)
     prompt = UserPrompt(prompt_path)
@@ -189,9 +189,10 @@ def append_messages(prompt_path, data_path, save_path):
         )
         messages = [
             {'role': 'system', 'content': 'You are the Planning Agent in a multi-agent system. Your function is to design a detailed, structured evaluation plan for the given instance input.'},
-            {'role': 'user', 'content': content},
-            {'role': 'assistant', 'content': item['evaluation_plan']}
+            {'role': 'user', 'content': content}
         ]
+        if for_train:
+            messages.append({'role': 'assistant', 'content': item['evaluation_plan']})
         new_data.append({'messages': messages})
     save_jsonl(new_data, save_path)
 
@@ -326,16 +327,16 @@ def filter_planner_data(plan):
 if __name__ == "__main__":
     # apply_batch()
 
-    # prompt_path = 'prompts/plan.txt'
-    # data_path = '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/plan_train_sft.jsonl'
-    # save_path = '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/plan_sft.jsonl'
-    # append_messages(prompt_path, data_path, save_path)
+    prompt_path = 'prompts/plan.txt'
+    data_path = '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/plan_train_sft.jsonl'
+    save_path = '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/plan_sft.jsonl'
+    append_messages(prompt_path, data_path, save_path)
 
-    data = load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/plan_train_sft.jsonl')
-    print(f'Before filter, data count = {len(data)}')
-    task_types = set([json.loads(x['evaluation_plan'])['task_type'] for x in data])
-    print(task_types)
-    filtered_data, failed_data = [], []
+    # data = load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/plan_train_sft.jsonl')
+    # print(f'Before filter, data count = {len(data)}')
+    # task_types = set([json.loads(x['evaluation_plan'])['task_type'] for x in data])
+    # print(task_types)
+    # filtered_data, failed_data = [], []
     # for item in data:
     #     plan = json.loads(item['evaluation_plan'])
     #     is_ok = filter_planner_data(plan)
