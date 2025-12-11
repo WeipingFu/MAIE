@@ -1,0 +1,119 @@
+[You Will Receive]
+- Original task Description.
+- Evaluation mode (pointwise or pairwise).
+- A model response (for point-wise evaluation) or two model responses (for pairwise evaluation).
+- Optionally, user-provided evaluation criteria (dimensions and scoring guidelines).
+
+
+[Your Goals]
+1. Task Identification: Identify the specific task type (e.g., Writing, Reasoning, Coding, Math, Dialogue, etc.).
+
+2. Evaluation Plan Construction: Generate a specific, verifiable, and complete instance-level evaluation plan that adapts to the specific task and model response(s).
+Follow steps:
+    (1) Evaluation Criteria Design:
+        - If evaluation criteria are provided, follow the user-provided criteria;
+        - If no criteria are provided, design suitable evaluation criteria based on the task and model output(s), which includes evaluation dimensions, their scoring scales, and the high/low score indicators, etc.
+    (2) Agent Assignment: For each evaluation dimension, define:
+        - The role of the Judge Agent;
+        - The evaluation task the agent must perform
+        - Step-by-step evaluation instructions
+    (3) Dependency Identification: Since evaluation dimensions can influence each other, clearly defining the dependencies between them allows Judge Agents to reference and integrate the perspectives of related agents into their own judgments.
+
+3. Output Formatting: Structure your output strictly as JSON format.
+
+
+[Key Principles]
+- Instance-level: Evaluation plan must be specific and tailored for this instance, not only the task type.
+- Verifiable and executable: Each dimension must be measurable and executable by a Judge Agent. The evaluation plan must be practical and executable.
+- Completeness: Include evaluation dimensions, their scoring standards, and per-dimension Judge Agent instructions. Ensure all key dimensions of this instance are covered.
+- Non-Redundant: Each evaluation dimension should be distinct and non-overlapping.
+- Consistency: The dependencies defined between evaluation dimensions must align with the edges in the evaluation graph.
+- Structured: Output must strictly follow the required JSON schema, ready for downstream use.
+
+
+[Task-Specific Required Evaluation Aspects]
+For each task type, the evaluation plan MUST cover the following essential aspects. The dimensions representing these aspects can be named and formulated flexibly, and the plan may include additional dimensions beyond the required ones when necessary.
+The task types listed below are not exhaustive; for other or mixed tasks, the evaluation plan should identify and cover their essential task-specific aspects.
+
+- Math:
+  - Answer Correctness: Whether the final answer is correct.
+  - Reasoning Validity: Whether the solution steps are logically valid and mathematically sound.
+
+- Coding:
+  - Functional Correctness: Whether the code solves the task as specified.
+  - Executability :Whether the code can run correctly without errors.
+
+- Reasoning:
+  - Conclusion Correctness: Whether the final conclusion, decision, or inferred result is correct given the premises.
+  - Logical Consistency: Whether the reasoning process is logically coherent and free of contradictions.
+
+- Question Answering / Factual Tasks:
+  - Factual Accuracy: Whether the answer is factually accurate.
+  - Faithfulness / Grounding (when applicable): Whether the answer is faithful to the provided source, context, or knowledge.
+
+- Writing / Dialogue:
+  - Contextual Coherence: Whether the response is internally coherent and consistent with the given context or dialogue history.
+  - Relevance (when applicable): Whether the response directly addresses the prompt or conversational intent.
+  - Language Quality: Whether the response exhibits appropriate grammar, fluency, and clarity.
+
+- Instruction Following:
+  - Instruction compliance: Whether the response follows all explicit constraints and requirements stated in the instruction.
+
+- Data Analysis:
+  - Data Grounding: Whether the analysis, calculations, or conclusions are properly supported by the given data.
+
+
+[Required JSON Schema (strict)]
+{
+  "task_type": "",
+  "sub_task": "",
+  "evaluation_mode": "pointwise or pairwise",
+  "evaluation_dimensions": [
+    {
+      "name": "",
+      "definition": "",
+      "rationale": "",
+      "weight": "",                      // decimal between 0-1, sum=1, e.g., 0.5
+      "evaluation_granularity": "",      // "holistic" - Judges the response as a whole; "localized" - focuses on specific portions or elements of the response; "stepwise" - Examines each reasoning or generation step within the response.
+      "scoring_scale": "",               // e.g., "1-5", "0-100" for pointwise evaluation; or "binary preference" for pairwise evaluation
+      "high_score_indicator": "",        // description of high score evaluation criteria
+      "low_score_indicator": "",         // description of low score evaluation criteria
+      "dependencies": [""],              // optional list of related dimension names
+      "assigned_agent": {
+        "role_name": "",
+        "role_description": "",          // the role the agent plays, e.g. "Your are a xxxx, responsible for xxxx"
+        "evaluation_task": "",           // concise description of what this agent must judge
+        "evaluation_steps": [            // detailed steps that the judge agent must follow
+          "Step 1: ...",
+          "Step 2: ...",
+          "Step 3: ..."
+        ]
+      }
+    },
+    ...
+  ]
+}
+
+
+{{examples}}
+
+
+[Start of Current Input]
+{{history}}
+
+[Original Task Description]
+{{task_description}}
+
+[Evaluation Mode]
+{{evaluation_mode}}
+
+[Model Response]
+{{model_response}}
+
+{{criteria}}
+[End of Current Input]
+
+
+[Output Constraints]
+- Output only the required JSON
+- No extra text, prefix, comments

@@ -9,7 +9,7 @@ from openai import OpenAI
 import asyncio
 
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+os.environ["CUDA_VISIBLE_DEVICES"] = '3'
 
 client_config = load_json("config.json").get("client-new")
 client_vllm_config = load_json("config.json").get("client-vllm")
@@ -59,7 +59,8 @@ class ModelCientVLLM:
             self.llm = LLM(
                 model=client_vllm_config.get("model_path"),
                 tokenizer=client_vllm_config.get("tokenizer_path"),
-                dtype="bfloat16"
+                dtype="bfloat16",
+                gpu_memory_utilization=0.4
             )
             self.tokenizer = self.llm.get_tokenizer()
 

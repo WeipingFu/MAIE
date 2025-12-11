@@ -20,8 +20,8 @@
     "client-vllm": {
         "model_type": "open",
         "model_name": "qwen3-8b",
-        "model_path": "/autodl-fs/data/pretrained_model/qwen3-8b/",
-        "tokenizer_path": "/autodl-fs/data/pretrained_model/qwen3-8b/",
+        "model_path": "/data1/fwp/pretrained_model/qwen3-8b/",
+        "tokenizer_path": "/data1/fwp/pretrained_model/qwen3-8b/",
         "base_url": "http://localhost:8000/v1",
         "api_key": "empty"
     },

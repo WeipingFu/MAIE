@@ -1,7 +1,7 @@
 [You Will Receive]
 - Original Generation task and a model response (for point-wise evaluation) or two model responses (for pairwise evaluation).
 - Evaluation Dimension and Task: The name of dimension to be evaluated and your task.
-- Evaluation Mode: "point-wise" or "pairwise".
+- Evaluation Mode: "pointwise" or "pairwise".
 - Scoring scale and the indicators of high/low scores.
 - Evaluation Granularity: The scope and depth of the evaluation. "holistic" - Judges the response as a whole; "localized" - focuses on specific portions or elements of the response; "stepwise" - evaluates each reasoning or generation step individually.
 - Evaluation Steps: Step-by-step guidance on how to conduct the evaluation.
@@ -27,7 +27,7 @@
 
 [Required JSON Schema (strict)]
 {
-  "judgement": "For pointwise evaluation, return a specific score; For pairwise evaluation, return one of ['model_a', 'model_b', 'tie']",
+  "judgement": "For pointwise evaluation, return a specific score; For pairwise evaluation, return one of ['model_a', 'model_b']",
   "step_by_step_evaluation_process": "string, detailed execution process that follow the evaluation steps and may include how dependency results were considered",
   "confidence": "string (0-1)"
 }

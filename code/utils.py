@@ -68,6 +68,29 @@ def safe_load_json(content):
 
 import re
 def clean_json(content):
-    content = content.strip().replace('```json','').replace('```','')
+    content = content.strip().replace('```json','').replace('```','').strip()
     content = re.sub(r'[\x00-\x1F]', '', content)
-    return content
+    try:
+        return json.dumps(json.loads(content))
+    except json.JSONDecodeError:
+        pass
+
+    corrected_str = re.sub(r'(?<!\\)\\(?!["/bfnrtu\\\\])', r'\\\\', content)
+    try:
+        return json.dumps(json.loads(corrected_str))
+    except json.JSONDecodeError:
+        pass
+    
+
+    temp_str = corrected_str.replace('\\\\\\\\', '\\\\') 
+    temp_str = temp_str.replace('\\\\\\', '\\\\')       
+    if temp_str == corrected_str:
+        final_str = temp_str.replace('\\', '\\\\')
+    else:
+        final_str = temp_str
+
+    try:
+        return json.dumps(json.loads(final_str))
+    except json.JSONDecodeError:
+        final_str_quotes_fixed = final_str.replace("'", '"')
+        return final_str_quotes_fixed

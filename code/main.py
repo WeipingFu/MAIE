@@ -18,6 +18,7 @@ class PlanInputMessage(BaseModel):
     convs: Optional[List] = None
     original_evaluation_plan: Optional[str] = None
     feedback: Optional[str] = None
+    criteria_list: Optional[List] = None
 
 class JudgeInputMessage(BaseModel):
     task: str
@@ -33,6 +34,8 @@ class CriticInputMessage(BaseModel):
     task: str
     model_responses: List
     evaluation_plan: str
+    eval_mode: Optional[str] = None
+    criteria_list: Optional[List] = None
 
 
 # aggregate judge results
@@ -116,7 +119,7 @@ def aggregate_final_result(plan_json, judge_results, eval_mode=None):
     else:
         raise ValueError(f"Unknown evaluation mode: {eval_mode}")
 
-async def plan_critic_collaboration(task, model_responses, eval_mode, convs, original_evaluation_plan, critic_round):
+async def plan_critic_collaboration(task, model_responses, eval_mode, convs, criteria_list, original_evaluation_plan, critic_round):
     print('--------------------Start Planner-Critic Collaboration--------------------')
     planner = PlannerAgent(name='Reviser', mode='revise')
     critic = CriticAgent(name="Critic")
@@ -129,7 +132,9 @@ async def plan_critic_collaboration(task, model_responses, eval_mode, convs, ori
             content=CriticInputMessage(
                 task=task,
                 model_responses=model_responses,
-                evaluation_plan=evaluation_plan_str
+                evaluation_plan=evaluation_plan_str,
+                eval_mode=eval_mode,
+                criteria_list=criteria_list
             )
         )
         critic_response = await critic.on_messages([critic_user_message], CancellationToken())
@@ -146,6 +151,7 @@ async def plan_critic_collaboration(task, model_responses, eval_mode, convs, ori
                 model_responses=model_responses,
                 eval_mode=eval_mode,
                 convs=convs,
+                criteria_list=criteria_list,
                 original_evaluation_plan=evaluation_plan_str,
                 feedback=critic_response.chat_message.content
             )
@@ -178,7 +184,7 @@ async def run_one_judge(judge, task, model_responses, dimension_plan, first_judg
     return dimension_name, one_judge_result, is_revise
 
 
-async def run_pipeline(task, model_responses, eval_mode=None, convs=None, critic_round=0, judge_chat=True):
+async def run_pipeline(task, model_responses, eval_mode=None, convs=None, criteria_list=None, critic_round=0, judge_chat=True):
     print("--------------------Start Evaluation--------------------")
 
     if not eval_mode:
@@ -203,7 +209,8 @@ async def run_pipeline(task, model_responses, eval_mode=None, convs=None, critic
             task=task,
             model_responses=model_responses,
             eval_mode=eval_mode,
-            convs=convs
+            convs=convs,
+            criteria_list=criteria_list
         )
     )
     # 1. Frist plan
@@ -220,6 +227,7 @@ async def run_pipeline(task, model_responses, eval_mode=None, convs=None, critic
             model_responses=model_responses,
             eval_mode=eval_mode,
             convs=convs, 
+            criteria_list=criteria_list,
             original_evaluation_plan=original_evaluation_plan, 
             critic_round=critic_round
         )
@@ -292,9 +300,9 @@ async def run_pipeline(task, model_responses, eval_mode=None, convs=None, critic
     return evaluation_plan, judge_results, final_judgement, plan_revise_count, judge_revise_count
 
 
-if __name__ == "__main__":
-    
-    # evaluate one sample
+
+def test_one_pairwise():
+    # evaluate one sample - pariwise
     task = "Write a summary for the given context.\nContext: Artificial intelligence (AI) is transforming many industries, from healthcare to finance. In healthcare, AI assists doctors in diagnosing diseases faster and more accurately. In finance, AI algorithms detect fraudulent transactions and automate trading. However, experts warn that while AI brings efficiency, it also raises concerns about privacy, job loss, and bias in automated systems. Governments and organizations are now focusing on developing ethical guidelines and regulations for responsible AI use."
     model_responses = [
         "AI is changing industries such as healthcare and finance by improving diagnosis and detecting fraud. Yet, it also causes privacy and job concerns. Governments are working on responsible AI regulations.",
@@ -306,6 +314,7 @@ if __name__ == "__main__":
         model_responses, 
         eval_mode='pairwise',
         convs=convs,
+        criteria_list=None,
         critic_round=3,
         judge_chat=True
     ))
@@ -314,3 +323,45 @@ if __name__ == "__main__":
     print(f'Final Judgement: {final_judgement}')
     print(f'Plan Revise Count: {plan_revise_count}')
     print(f'Judge Revise Count: {judge_revise_count}')
+
+
+def test_one_pointwise():
+    # evaluate one sample - pointwise
+    task = "Imagine a scenario where an individual from the UK is in the United States for a vacation. However, they are struggling to understand the local dialects, accents, and expressions used by the people there. They are also finding it hard to convey their intended message as their phrases and expressions, heavily influenced by their regional factors, are often misunderstood. What steps or strategies can this individual employ to improve their understanding and communication in such a scenario?"
+    model_responses = [
+        "The individual might find it difficult to adjust to the American dialects and expressions initially, but some strategies might be of slight help. Watching some local American shows can somewhat help in getting accustomed to the local accents. While conversing, try to stick to English that's more generic, it might make communication a little easier. When you don't comprehend what is being said, you might want to ask for explanations, though it might not always help. Sometimes, you might be able to guess the meaning of unfamiliar phrases from the situation or conversation. Active listening might be of little help, but it's worth trying. Using translation apps could be an option, but they might not always translate local expressions accurately."
+    ]
+    convs = None
+    criteria_list = [
+        {
+            "dimension":"", 
+            "description":"Is the model proficient in interpreting and responding to various local dialects, accents, and local expressions? Does it have the ability to comprehend and understand the same expression or phrase used in diverse situations influenced by regional factors?", 
+            "scoring_scale":"1-5", 
+            "high_score_indicator":"Score 4: The model exhibits a robust understanding of diverse local dialects, accents, and idiomatic expressions, and seldom misreads the context.\nScore 5: The model demonstrates exceptional proficiency in understanding diverse local dialects, accents, and slang, and accurately deciphers the context in all scenarios.", 
+            "low_score_indicator":"Score 1: The model displays no comprehension of local dialects, accents, or idioms. It is incapable of understanding the same expression or phrase used in distinct situations influenced by regional factors.\nScore 2: The model exhibits a slight grasp of regional dialects and accents, but often misreads local expressions and context influenced by locality.\nScore 3: The model demonstrates a fair understanding of local dialects, accents, and vernaculars, yet at times misinterprets the context."
+        }
+    ]
+    evaluation_plan, judge_results, final_judgement, plan_revise_count, judge_revise_count = asyncio.run(run_pipeline(
+        task, 
+        model_responses, 
+        eval_mode='pointwise',
+        convs=convs,
+        criteria_list=criteria_list,
+        critic_round=3,
+        judge_chat=True
+    ))
+    print(f'Evaluation Plan\n{evaluation_plan}')
+    print(f'Judge Results\n{judge_results}')
+    print(f'Final Judgement: {final_judgement}')
+    print(f'Plan Revise Count: {plan_revise_count}')
+    print(f'Judge Revise Count: {judge_revise_count}')
+
+
+if __name__ == "__main__":
+    while True:
+        print("Test Sample 1")
+        test_one_pairwise()
+
+        print("Test Sample 2")
+        test_one_pointwise()
+    

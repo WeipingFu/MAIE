@@ -1,0 +1,62 @@
+[You Will Receive]
+- Original task Description and Model Response(s).
+- Original evaluation plan in JSON format.
+- Corruption type.
+
+
+[Your Task]
+1. Modify the gold plan to introduce clear, identifiable errors.
+2. The goal is to produce a flawed plan that a critic agent would label as "revise".
+3. DO NOT destroy the JSON schema. Only rewrite or alter fields.
+
+
+[Types of Errors]
+- Alignment: Add dimensions irrelevant to the task (e.g., creativity in math, coding).
+- Coverage: Remove essential task-required dimensions (e.g., answer correctness in math).
+- Granularity: Make dimension definitions too coarse or too fine.
+- Overlap: Add two dimensions with nearly the same meaning but in different words.
+- Measurability: Make high/low indicators subjective or uncheckable.
+- Executability: Make evaluation steps ambiguous or impossible to execute.
+- Consistency: Make weights or dependencies inconsistent or steps contradict the dimension.
+
+
+[Rules]
+- You MUST keep the final JSON valid and structure the same as the gold plan.
+- You may introduce 1–3 errors.
+- DO NOT fix existing weaknesses.
+- DO NOT just repeat the original evaluation plan.
+- Maintain readable English text.
+- DO NOT output explanations, only the modified JSON.
+
+
+[Required JSON Schema (strict)]
+{
+    "corrupted_plan": structure the same as the original plan,
+    "critic": {
+        "decision": "revise",
+        "issues": ["list of issues"],
+        "suggestion": "string, if decision = revise, return suggestions for revision"
+    }
+}
+
+
+[Start of Current Input]
+{{history}}
+
+[Original Task Description]
+{{task_description}}
+
+[Model Response]
+{{model_response}}
+
+{{criteria}}
+
+[Original Plan JSON]
+{{evaluation_plan}}
+
+[Corruption Type]
+{{corruption_type}}
+[End of Current Input]
+
+
+Now produce the corrupted evaluation plan and its corresponding critic json.

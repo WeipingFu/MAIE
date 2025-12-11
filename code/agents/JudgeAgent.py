@@ -55,6 +55,14 @@ class UserPrompt:
         if dependency_result_dict and len(dependency_result_dict) > 0:
             dependency_results = '\n\n'.join([f'[Result of Dimension {key}]\n{result}' for key, result in dependency_result_dict.items()])
         return dependency_results
+    
+    def get_model_response(self, model_responses):
+        mapping = {i: chr(ord('a') + i - 1) for i in range(1, 27)}
+        if len(model_responses) == 1:
+            model_response_str = model_responses[0]
+        else:
+            model_response_str = '\n'.join([f'[Response of Model {mapping[idx+1]}]\n{response}' for idx, response in enumerate(model_responses)])
+        return model_response_str
 
     def generate_user_prompt(self, task, model_responses, dimension_plan, first_judgement='', dependency_results_dict=None, eval_mode=None, convs=None, example_paths=None):
         if not eval_mode:
@@ -68,7 +76,7 @@ class UserPrompt:
             "examples": self.get_examplestr(example_paths),
             "history": self.get_conv_history(convs),
             "generation_task": task,
-            "model_response": '\n'.join(['[Response {}]\n{}'.format(i+1, output) for i,output in enumerate(model_responses)]),
+            "model_response": self.get_model_response(model_responses),
             "dimension": dimension_plan.get("name") + ': ' + dimension_plan.get("definition"),
             "evaluation_task": dimension_plan.get("assigned_agent").get("evaluation_task"),
             "evaluation_mode": eval_mode,

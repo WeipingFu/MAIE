@@ -27,9 +27,12 @@ class EvaluationDimension(BaseModel):
     definition: str = Field(description="A definition describing what this dimension measures.")
     rationale: str = Field(description="Explanation of why this dimension is important for the evaluation.")
     weight: float = Field(description="The weight of this dimension in the final total score (0.0-1.0). The sum of all weights should be 1.")
-    evaluation_granularity: Literal["holistic", "localized", "stepwise"] = Field(
+    evaluation_granularity: str = Field(
         description='The scope and granularity of the evaluation: "holistic" (judges the response as a whole), "localized" (focuses on specific portions), "stepwise" (examines each reasoning or generation step).'
     )
+    # evaluation_granularity: Literal["holistic", "localized", "stepwise"] = Field(
+    #     description='The scope and granularity of the evaluation: "holistic" (judges the response as a whole), "localized" (focuses on specific portions), "stepwise" (examines each reasoning or generation step).'
+    # )
     scoring_scale: str = Field(description='The scoring system used by the evaluator, e.g., "1-5", "0-100", or "binary preference".')
     high_score_indicator: str = Field(description="Describes the characteristics of a high score (full marks).")
     low_score_indicator: str = Field(description="Describes the characteristics of a low score (minimum marks).")
@@ -67,14 +70,15 @@ class UserPrompt:
                 history_str += '[Turn {}]\n[User]\n{}\n[Model a]\n{}\n[Model b]\n{}\n\n'.format(str(idx+1), conv['user'], conv['a'], conv['b'])
         return history_str
     
-    def get_user_criteria(self):
-        criteria_path = planner_config.get('criteria_path', '')
+    def get_user_criteria(self, eval_mode, criteria_list=None):
         user_criteria = ''
-        if criteria_path:
-            criteria_list = load_json(criteria_path)['evaluation_dimensions']     # {'evaluation_dimensions':[{"dimension":"", "scoring_scale":"", "high_score_indicator":"", "low_score_indicator":""}, ...]}
+        scoring_scale = 'binary preference' if eval_mode == 'pairwise' else '1-5'
+        if criteria_list and len(criteria_list) > 0:
+            # [{"dimension":"", "description":"", "scoring_scale":"", "high_score_indicator":"", "low_score_indicator":""}, ...]
             user_criteria += '[User-defined Evaluation Criteria]\n'
             for i, item in enumerate(criteria_list):
-                one = 'Dimension: {}\nScoring Scale: {}\nHigh Score Indicator: {}\nLow Score Indicator: {}\n'.format(item.get('dimension',''), item.get('scoring_scale'), item.get('high_score_indicator',''), item.get('low_score_indicator',''))
+                dimension_str = item.get('dimension','')+"-"+item.get('description')
+                one = f"Dimension: {dimension_str}\nScoring Scale: {item.get('scoring_scale', scoring_scale)}\nHigh Score Indicator: {item.get('high_score_indicator','')}\nLow Score Indicator: {item.get('low_score_indicator','')}\n"
                 user_criteria += one
         return user_criteria
     
@@ -90,10 +94,13 @@ class UserPrompt:
     
     def get_model_response(self, model_responses):
         mapping = {i: chr(ord('a') + i - 1) for i in range(1, 27)}
-        model_response_str = '\n'.join([f'[Response of Model {mapping[idx+1]}]\n{response}' for idx, response in enumerate(model_responses)])
+        if len(model_responses) == 1:
+            model_response_str = model_responses[0]
+        else:
+            model_response_str = '\n'.join([f'[Response of Model {mapping[idx+1]}]\n{response}' for idx, response in enumerate(model_responses)])
         return model_response_str
 
-    def generate_user_prompt(self, task, model_responses, eval_mode=None, original_evaluation_plan=None, feedback=None, convs=None):
+    def generate_user_prompt(self, task, model_responses, eval_mode=None, original_evaluation_plan=None, feedback=None, convs=None, criteria_list=None):
         if not eval_mode:
             if len(model_responses) == 1:
                 eval_mode = 'pointwise'
@@ -106,7 +113,7 @@ class UserPrompt:
             "history": self.get_conv_history(convs),
             "task_description": task,
             "model_response": self.get_model_response(model_responses),
-            "criteria": self.get_user_criteria()    
+            "criteria": self.get_user_criteria(eval_mode, criteria_list)    
         }
         if self._mode == 'revise':
             template_vars["original_evaluation_plan"] = original_evaluation_plan
@@ -148,13 +155,15 @@ class PlannerAgent(BaseChatAgent):
         convs = runtime_payload.convs
         original_evaluation_plan = runtime_payload.original_evaluation_plan
         feedback = runtime_payload.feedback
+        criteria_list = runtime_payload.criteria_list
         content = self._user_prompt.generate_user_prompt(
             task, 
             model_responses, 
             eval_mode=eval_mode,
             original_evaluation_plan=original_evaluation_plan,
             feedback=feedback, 
-            convs=convs
+            convs=convs,
+            criteria_list=criteria_list
         )
 
         # Call the LLM
