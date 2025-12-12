@@ -27,6 +27,15 @@ class UserPrompt:
     def __init__(self):
         self._user_prompt = read_text(critic_config.get("prompt_path", "../prompts/critic.txt"))
     
+    def get_conv_history(self, convs):
+        history_str = ''
+        if convs and len(convs) > 0:
+            history_str = '[Conversation History Between User and Models]\n'
+            for idx, conv in enumerate(convs):
+                history_str += '[Turn {}]\nUser: {}\nModel A: {}\nModel B: {}\n'.format(str(idx+1), conv['user'], conv['a'], conv['b'])
+            history_str += '\n\n\n'
+        return history_str
+
     def get_user_criteria(self, eval_mode, criteria_list=None):
         user_criteria = ''
         scoring_scale = 'binary preference' if eval_mode == 'pairwise' else '1-5'
@@ -57,7 +66,7 @@ class UserPrompt:
             model_response_str = '\n'.join([f'[Response of Model {mapping[idx+1]}]\n{response}' for idx, response in enumerate(model_responses)])
         return model_response_str
 
-    def generate_user_prompt(self, task, model_responses, evaluation_plan, eval_mode=None, criteria_list=None):
+    def generate_user_prompt(self, task, model_responses, evaluation_plan, eval_mode=None, convs=None, criteria_list=None):
         if not eval_mode:
             if len(model_responses) == 1:
                 eval_mode = 'pointwise'
@@ -67,6 +76,7 @@ class UserPrompt:
                 raise ValueError('The count of model_responses = {}, which is not supported!'.format(len(model_responses)))
         template_vars = {
             "examples": self.get_examplestr(),
+            "history": self.get_conv_history(convs),
             "task_description": task,
             "model_response": self.get_model_response(model_responses),
             "criteria": self.get_user_criteria(eval_mode, criteria_list),
@@ -102,8 +112,9 @@ class CriticAgent(BaseChatAgent):
         model_responses = runtime_payload.model_responses
         evaluation_plan = runtime_payload.evaluation_plan
         eval_mode = runtime_payload.eval_mode
+        convs = runtime_payload.convs
         criteria_list = runtime_payload.criteria_list
-        content = self._user_prompt.generate_user_prompt(task, model_responses, evaluation_plan, eval_mode, criteria_list)
+        content = self._user_prompt.generate_user_prompt(task, model_responses, evaluation_plan, eval_mode, convs, criteria_list)
         
         # Call the LLM
         messages = [

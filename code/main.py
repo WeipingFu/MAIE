@@ -35,11 +35,23 @@ class CriticInputMessage(BaseModel):
     model_responses: List
     evaluation_plan: str
     eval_mode: Optional[str] = None
+    convs: Optional[List] = None
     criteria_list: Optional[List] = None
 
 
+# normalize score
+def normalize_score(source_min, source_max, target_min, target_max, raw_score):
+    if source_min == target_min and source_max == target_max:
+        return raw_score
+    score = 9999
+    target_range = target_max - target_min
+    source_range = source_max - source_min
+    if source_range > 0 and target_range > 0:
+        score = target_min + ((raw_score - source_min) / source_range) * target_range
+    return score
+
 # aggregate judge results
-def aggregate_final_result(plan_json, judge_results, eval_mode=None):
+def aggregate_final_result(plan_json, judge_results, eval_mode=None, target_min=1.0, target_max=5.0):
     """
     Aggregate final results based on evaluation mode.
     - If mode == "pointwise": weighted average of scores.
@@ -57,18 +69,35 @@ def aggregate_final_result(plan_json, judge_results, eval_mode=None):
         for dim in dims:
             name = dim["name"]
             weight = float(dim.get("weight", 0.2))
+            scoring_scale = dim.get("scoring_scale", "1-5") 
+            source_min = 1.0
+            source_max = 5.0
+            try:
+                parts = scoring_scale.split('-')
+                if len(parts) == 2:
+                    source_min = float(parts[0].strip())
+                    source_max = float(parts[1].strip())
+            except Exception:
+                pass
+
             result_json = judge_results.get(name, None)
+            score = 9999
+            raw_score = 0.0
             # print(result_json)
             try:
-                score = float(result_json.get("judgement"))
+                raw_score = float(result_json.get("judgement"))
+                score = normalize_score(source_min, source_max, target_min, target_max, raw_score)
             except Exception:
-                score = 0.0
+                score = 9999
+            if score == 9999:
                 weight = 0.0
+            print(f'Dimension: {name}, Weight: {weight}; Raw score = {raw_score}, Normalized score = {score}')
             total_score += weight * score
             weight_sum += weight
             detailed_scores[name] = {"weight": weight, "score": score}
 
         final_score = total_score / weight_sum if weight_sum > 0 else 9999
+        print(f'Final Score: {final_score}')
         return final_score
 
     elif eval_mode == "pairwise":
@@ -91,7 +120,7 @@ def aggregate_final_result(plan_json, judge_results, eval_mode=None):
                 judgement = result_json.get("judgement", "").strip().lower()
             except Exception:
                 judgement = None
-            print(f'Dimension: {name}, Judgement: {judgement}')
+    
             if judgement == "tie":
                 response_scores["model_a"] += weight / 2
                 response_scores["model_b"] += weight / 2
@@ -99,7 +128,7 @@ def aggregate_final_result(plan_json, judge_results, eval_mode=None):
                 response_scores[mapping[judgement]] += weight
             else:
                 weight = 0.0
-
+            print(f'Dimension: {name}, Weight: {weight}, Judgement: {judgement}')
             weight_sum += weight
             detailed_scores[name] = {"weight": weight, "judgement": judgement}
         
@@ -134,6 +163,7 @@ async def plan_critic_collaboration(task, model_responses, eval_mode, convs, cri
                 model_responses=model_responses,
                 evaluation_plan=evaluation_plan_str,
                 eval_mode=eval_mode,
+                convs=convs,
                 criteria_list=criteria_list
             )
         )
@@ -184,7 +214,7 @@ async def run_one_judge(judge, task, model_responses, dimension_plan, first_judg
     return dimension_name, one_judge_result, is_revise
 
 
-async def run_pipeline(task, model_responses, eval_mode=None, convs=None, criteria_list=None, critic_round=0, judge_chat=True):
+async def run_pipeline(task, model_responses, eval_mode=None, convs=None, criteria_list=None, critic_round=0, judge_chat=True, target_min=1.0, target_max=5.0):
     print("--------------------Start Evaluation--------------------")
 
     if not eval_mode:
@@ -293,7 +323,7 @@ async def run_pipeline(task, model_responses, eval_mode=None, convs=None, criter
 
         # 3.3. Aggreate judge results to final result
         print(f"--------------------Aggregate {len(judge_results)} Results--------------------")
-        final_judgement = aggregate_final_result(evaluation_plan, judge_results, eval_mode)
+        final_judgement = aggregate_final_result(evaluation_plan, judge_results, eval_mode, target_min, target_max)
     except Exception as e:
         print(f'Evaluation Fail! Exception: {e}')
     print('--------------------End of Evaluation--------------------')
@@ -318,11 +348,11 @@ def test_one_pairwise():
         critic_round=3,
         judge_chat=True
     ))
-    print(f'Evaluation Plan\n{evaluation_plan}')
-    print(f'Judge Results\n{judge_results}')
-    print(f'Final Judgement: {final_judgement}')
-    print(f'Plan Revise Count: {plan_revise_count}')
-    print(f'Judge Revise Count: {judge_revise_count}')
+    # print(f'Evaluation Plan\n{evaluation_plan}')
+    # print(f'Judge Results\n{judge_results}')
+    # print(f'Final Judgement: {final_judgement}')
+    # print(f'Plan Revise Count: {plan_revise_count}')
+    # print(f'Judge Revise Count: {judge_revise_count}')
 
 
 def test_one_pointwise():
@@ -350,11 +380,11 @@ def test_one_pointwise():
         critic_round=3,
         judge_chat=True
     ))
-    print(f'Evaluation Plan\n{evaluation_plan}')
-    print(f'Judge Results\n{judge_results}')
-    print(f'Final Judgement: {final_judgement}')
-    print(f'Plan Revise Count: {plan_revise_count}')
-    print(f'Judge Revise Count: {judge_revise_count}')
+    # print(f'Evaluation Plan\n{evaluation_plan}')
+    # print(f'Judge Results\n{judge_results}')
+    # print(f'Final Judgement: {final_judgement}')
+    # print(f'Plan Revise Count: {plan_revise_count}')
+    # print(f'Judge Revise Count: {judge_revise_count}')
 
 
 if __name__ == "__main__":
@@ -364,4 +394,3 @@ if __name__ == "__main__":
 
         print("Test Sample 2")
         test_one_pointwise()
-    

@@ -108,10 +108,10 @@ def build_critic_data_from_plan_gold(prompt_path, plan_gold_list, save_path, n_p
         item['corrupted_plan'] = None
         item['corruption_type'] = None
         item['critic_result'] = {
-                "decision": "accept",
-                "issues": [],
-                "suggestion": "The evaluation plan is well-aligned with the task, complete, and executable for this instance."
-            }
+            "decision": "accept",
+            "issues": [],
+            "suggestion": "The evaluation plan is well-aligned with the task, complete, and executable for this instance."
+        }
         pos_samples.append(item)
 
     # 2. sample plans, and corrupt them using GPT-4o
@@ -139,15 +139,114 @@ def build_critic_data_from_plan_gold(prompt_path, plan_gold_list, save_path, n_p
     return dataset
 
 
+def get_critic_prompt(prompt_path, item):
+    user_prompt = read_text(prompt_path)
+    convs = item['conversations']
+    if isinstance(convs, np.ndarray):
+        convs = convs.tolist()
+    evaluation_plan = item['evaluation_plan']
+    if 'corrupted_plan' in item and item['corrupted_plan']:
+        if type(item['corrupted_plan']) is dict:
+            evaluation_plan = json.dumps(item['corrupted_plan'])
+        else:
+            evaluation_plan = item['corrupted_plan']
+    template_vars = {
+        "examples": '',
+        "history": get_conv_history(convs),
+        "task_description": item['question'],
+        "model_response": get_model_response(item['model_response']),
+        "criteria": get_user_criteria(item['eval_type'], criteria_list=None),
+        "evaluation_plan": evaluation_plan
+    }
+    template = Template(user_prompt)
+    content = template.render(**template_vars)
+    return content
+
+
+def build_critic_data_with_gpt(prompt_path, data_list, save_path, prt=False):
+    results = []
+    for idx, item in tqdm(enumerate(data_list), total=len(data_list)):
+        content = get_critic_prompt(prompt_path, item)
+        messages = [
+            {'role': 'system', 'content': 'You are the Plan Critic. Your responsibility is to conduct a thorough review of the provided Evaluation Plan and give feedback.'},
+            {'role': 'user', 'content': content}
+        ]
+        if prt:
+            print('Messages:')
+            print(messages)
+        clean_json_str = ''
+        resp = completion_json('gpt-4o', messages, CriticResponse, max_try=3, prt=prt)
+        if type(resp) is str:
+            resp = clean_json(resp)
+        clean_json_str = resp.model_dump_json()
+        if prt:
+            print('Response:')
+            print(clean_json_str)
+        item['corrupted_plan'] = None
+        item['corruption_type'] = None
+        item['critic_result'] = clean_json_str
+        results.append(item)
+        if len(results) > 0 and len(results) % 2 == 0:
+            save_jsonl(results, save_path)
+    
+    save_jsonl(results, save_path)
+    print(f'Save {len(results)} data to {save_path}')
+
+
+def append_critic_messages(prompt_path, data_list, save_path, for_train=True, prt=False):
+    results = []
+    random.shuffle(data_list)
+    for idx, item in tqdm(enumerate(data_list), total=len(data_list)):
+        content = get_critic_prompt(prompt_path, item)
+        messages = [
+            {'role': 'system', 'content': 'You are the Plan Critic. Your responsibility is to conduct a thorough review of the provided Evaluation Plan and give feedback.'},
+            {'role': 'user', 'content': content}
+        ]
+        if for_train:
+            messages.append({'role': 'assistant', 'content': item['critic_result']})
+        if prt:
+            print('Messages:')
+            print(messages)
+        results.append({'messages': messages})
+    save_jsonl(results, save_path)
+    print(f'Save {len(results)} to {save_path}')
+        
+
+
 if __name__ == "__main__":
-    prompt_path = 'data_generator/corrupt_plan.txt'
-    plan_gold_list = load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/plan_train_sft.jsonl')
-    save_path = '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/critic_train_sft.jsonl'
-    build_critic_data_from_plan_gold(
-        prompt_path, 
-        plan_gold_list, 
-        save_path, 
-        n_pos=800, 
-        n_neg=1200,
-        prt=False
+    # # Corrupt gold plan
+    # prompt_path = 'data_generator/corrupt_plan.txt'
+    # plan_gold_list = load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/plan_train_sft.jsonl')
+    # save_path = '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/critic_train_sft.jsonl'
+    # build_critic_data_from_plan_gold(
+    #     prompt_path, 
+    #     plan_gold_list, 
+    #     save_path, 
+    #     n_pos=800, 
+    #     n_neg=1200,
+    #     prt=False
+    # )
+
+
+    # # Generate critic with gpt
+    # prompt_path = 'prompts/critic.txt'
+    # data_list = load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/planner_result.jsonl')
+    # save_path = '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/critic_train_sft-2.jsonl'
+    # # data_list = [data_list[0]]
+    # build_critic_data_with_gpt(
+    #     prompt_path, 
+    #     data_list, 
+    #     save_path, 
+    #     prt=False
+    # )
+
+    # append messages for train
+    data_list = load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/critic_train_sft.jsonl')
+    save_path = '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/critic_sft.jsonl'
+    append_critic_messages(
+        prompt_path='prompts/critic.txt', 
+        data_list=data_list, 
+        save_path=save_path, 
+        for_train=True, 
+        prt=True
     )
