@@ -20,12 +20,16 @@
     "client-vllm": {
         "model_type": "open",
         "model_name": "qwen3-8b",
-        "model_path": "/data1/fwp/pretrained_model/qwen3-8b/",
-        "tokenizer_path": "/data1/fwp/pretrained_model/qwen3-8b/",
+        "model_path": "/autodl-fs/data/pretrained_model/qwen3-8b/",
+        "tokenizer_path": "/autodl-fs/data/pretrained_model/qwen3-8b/",
+        "gpu_memory": 0.45,
+        "enable_lora": true,
         "base_url": "http://localhost:8000/v1",
         "api_key": "empty"
     },
     "planner": {
+        "lora_path": "/autodl-fs/data/maie/model/planner-sft-qwen3-8b",
+        "temperature": 0.0,
         "plan_prompt_path": "prompts/plan.txt",
         "revise_prompt_path": "prompts/plan-revise.txt",
         "max_new_tokens": 2048,
@@ -34,6 +38,8 @@
         "example_paths": []
     },
     "critic": {
+        "lora_path": "",
+        "temperature": 0.0,
         "prompt_path": "prompts/critic.txt",
         "max_new_tokens": 512,
         "thinking": false,
@@ -41,6 +47,8 @@
         "example_paths": []
     },
     "judge": {
+        "lora_path": "",
+        "temperature": 0.0,
         "judge_prompt_path": "prompts/judge.txt",
         "revise_prompt_path": "prompts/judge-revise.txt",
         "max_new_tokens": 512,

@@ -7,7 +7,8 @@ from pydantic import BaseModel, Field
 from jinja2 import Template
 
 from ..utils import load_json, read_text, clean_json
-from ..client import client_config, user_client
+from ..client import user_client
+# from ..client import ModelCientVLLM
 
 critic_config = load_json("./config.json").get("critic")
 
@@ -19,7 +20,7 @@ class CriticResponse(BaseModel):
     """
     decision: Literal["accept", "revise"] = Field(description="The decision Critic Agent make.")
     issues: Optional[List[str]] = Field(default_factory=list, description="Optional list of issues of the evaluation plan. If there are no issues, then return a blank list.")
-    suggestion: str = Field(description="if decision = revise, return suggestions for revision; if decision = accept, return a short reason for this decision.")
+    suggestion: Optional[str] = Field(description="if decision = revise, return suggestions for revision; if decision = accept, return a short reason for this decision.")
 
 
 # --- User prompt for Critic ---
@@ -92,7 +93,7 @@ class CriticAgent(BaseChatAgent):
         self,
         name: str = "Critic",
         description: str = "An agent that review the evaluation plan and provide feedback.",
-        model: str = client_config.get("model_name", "model")
+        model: str = critic_config.get("model_name", "critic_model")
     ):
         super().__init__(name=name, description=description)
         # self._model_context = UnboundedChatCompletionContext()
@@ -123,13 +124,15 @@ class CriticAgent(BaseChatAgent):
         ]
         result = await self._model_client.call(
             messages,
+            lora_path=critic_config.get("lora_path", ""),
+            temperature=critic_config.get("temperature", 0.0),
             max_new_tokens=critic_config.get("max_new_tokens")
         )
         
         # validate LLM result
         result = clean_json(result)
         clean_json_str = '{}'
-        # print(f'{self.name} Result: {result}\n')
+        print(f'{self.name} Result: {result}\n')
         try:
             parsed = CriticResponse.model_validate_json(result)
             clean_json_str = parsed.model_dump_json(indent=2)

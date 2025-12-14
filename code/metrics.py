@@ -55,15 +55,15 @@ def compute_metrics_pointwise(df, label_col, pred_col):
 
 if __name__ == "__main__":
     # df = pd.read_excel("/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/mt-bench/ablation/plan-critic-judge-chat-qwen3-8b-old.xlsx")
-    df = pd.DataFrame(load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/rewardbench2/plan-critic-judge-chat-qwen3-8b-new.jsonl'))
+    df = pd.DataFrame(load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/judgebench/ablation/plan-judge-chat-qwen3-8b.jsonl'))
     print(len(df[df['judgement'].isna()]), len(df[df['judgement']=='tie']))
     label_col = 'winner'
     pred_col = 'judgement'
     compute_metrics_pariwise(df, label_col, pred_col)
 
-    # df = pd.read_excel('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/feedbackbench/ablation/plan-judge-chat-qwen3-8b-criteria.xlsx')
-    # df = pd.DataFrame(load_jsonl("/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/rewardbench2/vanilla/vanilla-llama-3.1-8b-instruct.jsonl"))
-    # df.to_excel('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/rewardbench2/vanilla/vanilla-llama-3.1-8b-instruct.xlsx', index=False)
+    # # df = pd.read_excel('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/flask/plan-critic-judge-chat-qwen3-8b-criteria.xlsx')
+    # df = pd.DataFrame(load_jsonl("/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/feedbackbench/plan-judge-qwen3-8b-criteria.jsonl"))
+    # # df.to_excel('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/rewardbench2/vanilla/vanilla-llama-3.1-8b-instruct.xlsx', index=False)
     # print(len(df[df['judgement'].isna()]))
     # label_col = 'score'
     # pred_col = 'judgement'

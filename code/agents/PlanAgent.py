@@ -8,9 +8,12 @@ from jinja2 import Template
 
 from ..utils import load_json, read_text, clean_json
 # from ..client_llamacpp import client_config, user_client
-from ..client import client_config, user_client
+from ..client import user_client
+# from ..client import ModelCientVLLM
 
 planner_config = load_json("./config.json").get("planner")
+
+
 
 # --- JudgeAgent Details ---
 class AgentDetails(BaseModel):
@@ -30,9 +33,6 @@ class EvaluationDimension(BaseModel):
     evaluation_granularity: str = Field(
         description='The scope and granularity of the evaluation: "holistic" (judges the response as a whole), "localized" (focuses on specific portions), "stepwise" (examines each reasoning or generation step).'
     )
-    # evaluation_granularity: Literal["holistic", "localized", "stepwise"] = Field(
-    #     description='The scope and granularity of the evaluation: "holistic" (judges the response as a whole), "localized" (focuses on specific portions), "stepwise" (examines each reasoning or generation step).'
-    # )
     scoring_scale: str = Field(description='The scoring system used by the evaluator, e.g., "1-5", "0-100", or "binary preference".')
     high_score_indicator: str = Field(description="Describes the characteristics of a high score (full marks).")
     low_score_indicator: str = Field(description="Describes the characteristics of a low score (minimum marks).")
@@ -131,7 +131,7 @@ class PlannerAgent(BaseChatAgent):
         self,
         name: str = "Planner",
         description: str = "An agent that generate the evaluation plan.",
-        model: str = client_config.get("model_name", "model"),
+        model: str = planner_config.get("model_name", "plan_model"),
         mode: str = "plan"                          # plan or revise
     ):
         super().__init__(name=name, description=description)
@@ -173,12 +173,14 @@ class PlannerAgent(BaseChatAgent):
         ]
         result = await self._model_client.call(
             model_messages, 
+            lora_path=planner_config.get("lora_path", ""),
+            temperature=planner_config.get("temperature", 0.0),
             max_new_tokens=planner_config.get("max_new_tokens"))
         # print(result)
         # validate LLM result
         result = clean_json(result)
         clean_json_str = '{}'
-        # print(f'{self.name} Result: {result}\n')
+        print(f'{self.name} Result: {result}\n')
         try:
             parsed = PlannerResponse.model_validate_json(result)
             clean_json_str = parsed.model_dump_json(indent=2)

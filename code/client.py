@@ -5,11 +5,9 @@ from transformers import (
 )
 import torch
 from vllm import LLM, SamplingParams
+from vllm.lora.request import LoRARequest
 from openai import OpenAI
-import asyncio
 
-import os
-os.environ["CUDA_VISIBLE_DEVICES"] = '3'
 
 client_config = load_json("config.json").get("client-new")
 client_vllm_config = load_json("config.json").get("client-vllm")
@@ -60,7 +58,8 @@ class ModelCientVLLM:
                 model=client_vllm_config.get("model_path"),
                 tokenizer=client_vllm_config.get("tokenizer_path"),
                 dtype="bfloat16",
-                gpu_memory_utilization=0.4
+                gpu_memory_utilization=client_vllm_config.get("gpu_memory", 0.9),
+                enable_lora=client_vllm_config.get("enable_lora")
             )
             self.tokenizer = self.llm.get_tokenizer()
 
@@ -75,7 +74,7 @@ class ModelCientVLLM:
     
 
     # offline vLLM
-    async def call_offline(self, messages, temperature=0.0, max_new_tokens=256):
+    async def call_offline(self, messages, lora_path='', temperature=0.0, max_new_tokens=256):
         try:
             prompt = self.tokenizer.apply_chat_template(
                 messages,
@@ -87,7 +86,14 @@ class ModelCientVLLM:
                 temperature=temperature,
                 max_tokens=max_new_tokens,
             )
-            outputs = self.llm.generate([prompt], sampling_params)
+            if lora_path:
+                outputs = self.llm.generate(
+                    [prompt], 
+                    sampling_params,
+                    lora_request=LoRARequest("adapter", 1, lora_path)
+                )
+            else:
+                outputs = self.llm.generate([prompt], sampling_params)
             return outputs[0].outputs[0].text.strip()
         
         except Exception as e:
@@ -111,10 +117,11 @@ class ModelCientVLLM:
 
 
     # unified call
-    async def call(self, messages, temperature=0.0, max_new_tokens=256):
+    async def call(self, messages, lora_path='', temperature=0.0, max_new_tokens=256):
         if self.mode == 'offline':
             return await self.call_offline(
                 messages,
+                lora_path=lora_path,
                 temperature=temperature,
                 max_new_tokens=max_new_tokens
             )
@@ -131,7 +138,7 @@ class ModelCientVLLM:
 
 
     # call batch
-    async def call_offline_batch(self, messages_list, temperature=0.0, max_new_tokens=256):
+    async def call_offline_batch(self, messages_list, lora_path='', temperature=0.0, max_new_tokens=256):
         try:
             prompts = [
                 self.tokenizer.apply_chat_template(
@@ -146,8 +153,14 @@ class ModelCientVLLM:
                 temperature=temperature,
                 max_tokens=max_new_tokens,
             )
-            
-            outputs = self.llm.generate(prompts, sampling_params)
+            if lora_path:
+                outputs = self.llm.generate(
+                    prompts, 
+                    sampling_params,
+                    lora_request=LoRARequest("adapter", 1, lora_path)
+                )
+            else:
+                outputs = self.llm.generate(prompts, sampling_params)
             results = []
             for out in outputs:
                 if not out.outputs:

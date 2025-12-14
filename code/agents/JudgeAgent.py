@@ -7,7 +7,8 @@ from pydantic import BaseModel, Field
 from jinja2 import Template
 from ..utils import load_json, read_text, clean_json
 # from ..client_llamacpp import client_config, user_client
-from ..client import client_config, user_client
+from ..client import user_client
+# from ..client import ModelCientVLLM
 import json
 
 judge_config = load_json("./config.json").get("judge")
@@ -100,7 +101,7 @@ class JudgeAgent(BaseChatAgent):
         self,
         name: str = "Judge",
         description: str = "An agent that judge model's response(s) for given task.",
-        model: str = client_config.get("model_name", "model"),
+        model: str = judge_config.get("model_name", "judge_model"),
         mode: str = "judge"
     ):
         super().__init__(name=name, description=description)
@@ -129,15 +130,7 @@ class JudgeAgent(BaseChatAgent):
         content = self._user_prompt.generate_user_prompt(
             task, model_responses, dimension_plan, first_judgement,
             dependency_result_dict, eval_mode, convs, example_paths)
-        # result = await self._model_client.create(
-        #     [
-        #         SystemMessage(content=self._system_message),
-        #         UserMessage(content=content, source='user')
-        #     ],
-        #     json_output=JudgeResponse
-        # )
-        # response_message = TextMessage(content=result.content, source=self.name)
-
+       
         # Call the LLM
         messages = [
             {'role': 'system', 'content': self._system_message},
@@ -145,12 +138,14 @@ class JudgeAgent(BaseChatAgent):
         ]
         result = await self._model_client.call(
             messages,
+            lora_path=judge_config.get("lora_path", ""),
+            temperature=judge_config.get("temperature", 0.0),
             max_new_tokens=judge_config.get("max_new_tokens"))
         
         # validate LLM result
         result = clean_json(result)
         clean_json_str = '{}'
-        # print(f'{self.name} Result: {result}\n')
+        print(f'{self.name} Result: {result}\n')
         try:
             parsed = JudgeResponse.model_validate_json(result)
             clean_json_str = parsed.model_dump_json(indent=2)

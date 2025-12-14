@@ -335,10 +335,10 @@ async def test_flask(enable_criteria=True):
 if __name__ == "__main__":
     # pairwise
     # results = asyncio.run(test_mtbench())
-    # results = asyncio.run(test_judgebench())
+    results = asyncio.run(test_judgebench())
     # results = asyncio.run(test_rewardbench())
     # results = asyncio.run(test_rewardbench2())
 
     # pointwise
     # results = asyncio.run(test_feedbackbench(enable_criteria=True))
-    results = asyncio.run(test_flask(enable_criteria=True))
+    # results = asyncio.run(test_flask(enable_criteria=True))

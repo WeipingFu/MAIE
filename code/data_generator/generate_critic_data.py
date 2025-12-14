@@ -203,7 +203,10 @@ def append_critic_messages(prompt_path, data_list, save_path, for_train=True, pr
             {'role': 'user', 'content': content}
         ]
         if for_train:
-            messages.append({'role': 'assistant', 'content': item['critic_result']})
+            critic_res = item['critic_result']
+            if type(critic_res) is dict:
+                critic_res = json.dumps(critic_res)
+            messages.append({'role': 'assistant', 'content': critic_res})
         if prt:
             print('Messages:')
             print(messages)
@@ -241,8 +244,8 @@ if __name__ == "__main__":
     # )
 
     # append messages for train
-    data_list = load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/critic_train_sft.jsonl')
-    save_path = '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/critic_sft.jsonl'
+    data_list = load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/critic_train_sft-new.jsonl')
+    save_path = '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/critic_sft-new.jsonl'
     append_critic_messages(
         prompt_path='prompts/critic.txt', 
         data_list=data_list, 
@@ -250,3 +253,50 @@ if __name__ == "__main__":
         for_train=True, 
         prt=True
     )
+
+    # data = load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/critic_train_sft-new.jsonl')
+    # revise_items = []
+    # accept_items = []
+    # random.seed(42)
+    # pairwise, pointwise = 0, 0
+    # for item in data:
+    #     if item.get("eval_type") == 'pairwise':
+    #         pairwise += 1
+    #     elif item.get("eval_type") == 'pointwise':
+    #         pointwise += 1
+    #     critic_res = item.get('critic_result')
+    #     if isinstance(critic_res, str):
+    #         try:
+    #             critic_res = json.loads(critic_res)
+    #         except json.JSONDecodeError:
+    #             print(f"无法解析 JSON 字符串: {item.get('critic_result')}")
+    #             continue  
+
+    #     if not isinstance(critic_res, dict):
+    #          print(f"critic_result 格式错误，跳过: {item}")
+    #          continue
+
+    #     decision = critic_res.get('decision')
+        
+    #     item['critic_result'] = critic_res
+
+    #     if decision == 'revise':
+    #         revise_items.append(item)
+    #     elif decision == 'accept':
+    #         accept_items.append(item)
+    
+    # accept_limit = 1465
+    # if len(accept_items) > accept_limit:
+    #     sampled_accept_items = random.sample(accept_items, accept_limit)
+    # else:
+    #     # 如果 accept 项不够，则全部保留
+    #     sampled_accept_items = accept_items
+    #     print(f"实际 'accept' 项数量 ({len(accept_items)}) 少于目标 ({accept_limit})，已全部保留。")
+
+
+    # new_data = revise_items + sampled_accept_items
+    # print(len(revise_items), len(sampled_accept_items))
+    # random.shuffle(new_data)
+    # print(pairwise, pointwise)
+    # save_jsonl(new_data, '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/critic_train_sft-new.jsonl')
+    
