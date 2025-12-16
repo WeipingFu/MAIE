@@ -234,7 +234,7 @@ async def run_one_judge(judge, task, model_responses, dimension_plan, first_judg
     return dimension_name, one_judge_result, is_revise
 
 
-async def run_pipeline(task, model_responses, eval_mode=None, convs=None, criteria_list=None, critic_round=0, judge_chat=True, target_min=1.0, target_max=5.0):
+async def run_pipeline(task, model_responses, eval_mode=None, convs=None, criteria_list=None, critic_round=0, judge_chat=True, allow_tie=True, target_min=1.0, target_max=5.0):
     print("--------------------Start Evaluation--------------------")
 
     if not eval_mode:
@@ -343,7 +343,7 @@ async def run_pipeline(task, model_responses, eval_mode=None, convs=None, criter
 
         # 3.3. Aggreate judge results to final result
         print(f"--------------------Aggregate {len(judge_results)} Results--------------------")
-        final_judgement = aggregate_final_result(evaluation_plan, judge_results, eval_mode, target_min, target_max)
+        final_judgement = aggregate_final_result(evaluation_plan, judge_results, eval_mode, allow_tie, target_min, target_max)
     except Exception as e:
         print(f'Evaluation Fail! Exception: {e}')
     print('--------------------End of Evaluation--------------------')
@@ -366,7 +366,8 @@ def test_one_pairwise():
         convs=convs,
         criteria_list=None,
         critic_round=3,
-        judge_chat=True
+        judge_chat=True,
+        allow_tie=True
     ))
     # print(f'Evaluation Plan\n{evaluation_plan}')
     # print(f'Judge Results\n{judge_results}')

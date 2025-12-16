@@ -53,7 +53,8 @@ async def test_mtbench():
             convs=convs,
             criteria_list=None,
             critic_round=3,
-            judge_chat=True
+            judge_chat=True,
+            allow_tie=True
         )
         item['evaluation_plan'] = evaluation_plan
         item['judge_results'] = judge_results
@@ -105,7 +106,8 @@ async def test_judgebench():
             convs=convs,
             criteria_list=None,
             critic_round=0,
-            judge_chat=True
+            judge_chat=True,
+            allow_tie=False
         )
         item['winner'] = winner
         item['evaluation_plan'] = evaluation_plan
@@ -162,7 +164,9 @@ async def test_feedbackbench(enable_criteria=True):
             convs=convs,
             criteria_list=criteria_list,
             critic_round=3,
-            judge_chat=True
+            judge_chat=True,
+            target_min=1.0,
+            target_max=5.0
         )
 
         item['evaluation_plan'] = evaluation_plan
@@ -210,7 +214,8 @@ async def test_rewardbench():
             convs=None,
             criteria_list=None,
             critic_round=3,
-            judge_chat=True
+            judge_chat=True,
+            allow_tie=False
         )
         item['evaluation_plan'] = evaluation_plan
         item['judge_results'] = judge_results
@@ -255,7 +260,8 @@ async def test_rewardbench2():
             convs=None,
             criteria_list=None,
             critic_round=3,
-            judge_chat=True
+            judge_chat=True,
+            allow_tie=False
         )
         item['evaluation_plan'] = evaluation_plan
         item['judge_results'] = judge_results
@@ -310,7 +316,9 @@ async def test_flask(enable_criteria=True):
             convs=convs,
             criteria_list=criteria_list,
             critic_round=3,
-            judge_chat=True
+            judge_chat=True,
+            target_min=1.0,
+            target_max=5.0
         )
 
         item['evaluation_plan'] = evaluation_plan
