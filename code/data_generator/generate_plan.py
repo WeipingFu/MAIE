@@ -127,48 +127,72 @@ def apply_one(prompt_path, model, task, model_responses, eval_mode, convs, prt=F
         prt=prt
     )
     messages = [
-        {'role': 'system', 'content': 'You are the Planning Agent in a multi-agent system. Your function is to design a detailed, structured evaluation plan for the given instance input.'},
+        {'role': 'system', 'content': 'You are the Planning Agent in a multi-agent system. Your function is to design a detailed, structured evaluation plan for the given instance input. If the input contains revision feedback, revise the existing plan accordingly.'},
         {'role': 'user', 'content': content}
     ]
     clean_json_str = ''
-    # resp = completion(model, messages, max_try=3, prt=prt)
-    resp = completion_json(model, messages, PlannerResponse, max_try=3, prt=prt)
+    resp = completion(model, messages, temperature=0.7, top_p=0.8, max_try=1, prt=prt)
+    # resp = completion_json(model, messages, PlannerResponse, temperature=0.8, max_try=3, prt=prt)
     if type(resp) is str:
         resp = clean_json(resp)
-    clean_json_str = resp.model_dump_json()
+    try:
+        parsed = PlannerResponse.model_validate_json(resp)
+        clean_json_str = parsed.model_dump_json(indent=2)
+    except Exception as e:
+        print("Warning: PlannerResponse validation failed, return empty json str. Exception:", e)
+    messages.append({'role':'assistant', 'content':clean_json_str})
     return messages, clean_json_str
 
-def apply_batch():
-    model = 'gpt-4o'
-    data = pd.read_parquet('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/train_sft.parquet')
-    save_path = '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/plan_train_sft1.jsonl'
-    new_data = []
-    data = data.iloc[0:]
-    for idx, row in tqdm(data.iterrows(), total=len(data)):
-        convs = row['conversations']
-        if isinstance(convs, np.ndarray):
-            convs = convs.tolist()
-        messages, eval_plan = apply_one(
-            model,
-            task=row['question'],
-            model_responses=row['model_response'],
-            eval_mode=row['eval_type'],
-            convs=convs,
-            prt=False
-        )
-        item = row.to_dict()
-        item['messages'] = messages
-        item['evaluation_plan'] = eval_plan
-        # print('evaluation_plan', eval_plan, type(eval_plan))
-        new_data.append(item)
-        for key, v in item.items():
-            if isinstance(v, np.ndarray):
-                item[key] = v.tolist()
-        if len(new_data) > 0 and len(new_data) % 2 == 0:
-            save_jsonl(new_data, save_path)
 
+def apply_batch():
+    import random
+    model = 'gpt-4o'
+    data = pd.read_excel('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/plan_source.xlsx')
+    save_path = '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/plan_candidate-1.jsonl'
+    prompt_path = 'prompts/plan.txt'
+    print(f'{len(data["question"].unique())} unique questions for plan, including task types: {data["category"].unique()}')
+    data = data.iloc[513:]
+    data = data.fillna('')
+    new_data = []
+    sample_count = 3
+    for idx, row in tqdm(data.iterrows(), total=len(data)):
+        try:
+            convs = row['conversations']
+            if isinstance(convs, np.ndarray):
+                convs = convs.tolist()
+            if convs and type(convs) is str:
+                convs = eval(convs)
+            # print(convs)
+            model_responses = row['model_response']
+            if type(model_responses) is str:
+                model_responses = eval(model_responses)
+
+            for i in range(sample_count):
+                messages, eval_plan = apply_one(
+                    prompt_path,
+                    model,
+                    task=row['question'],
+                    model_responses=model_responses,
+                    eval_mode=row['eval_type'],
+                    convs=convs,
+                    prt=False
+                )
+                item = row.to_dict()
+                item['messages'] = messages
+                item['evaluation_plan'] = eval_plan
+                #  print('evaluation_plan', eval_plan, type(eval_plan))
+                for key, v in item.items():
+                    if isinstance(v, np.ndarray):
+                        item[key] = v.tolist()
+                new_data.append(item)
+                if len(new_data) > 0 and len(new_data) % 3 == 0:
+                    save_jsonl(new_data, save_path)
+        except Exception as e:
+            print(f"Generate Plan Failed! Exception: {e}")
+            continue
     save_jsonl(new_data, save_path)
     print(f'Save {len(new_data)} data to {save_path}!')
+
 
 def append_messages(prompt_path, data_path, save_path, for_train=True):
     new_data = []
@@ -325,12 +349,8 @@ def filter_planner_data(plan):
 
 
 if __name__ == "__main__":
-    # apply_batch()
+    apply_batch()
 
-    prompt_path = 'prompts/plan.txt'
-    data_path = '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/plan_train_sft.jsonl'
-    save_path = '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/plan_sft.jsonl'
-    append_messages(prompt_path, data_path, save_path)
 
     # data = load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/plan_train_sft.jsonl')
     # print(f'Before filter, data count = {len(data)}')

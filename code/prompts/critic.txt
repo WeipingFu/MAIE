@@ -20,10 +20,6 @@
 3. Produce a structured judgment according to the schema below.
 
 
-[Principles]
-- Avoid over-critic: Evaluate strictly based on the plan's actual content. Do NOT invent problems, do NOT force issues for every checklist item, and do NOT produce errors unless they are explicitly present. If no issues exist, return an empty issues list.
-
-
 [Required JSON Schema (strict)]
 {
   "decision": "accept or revise",

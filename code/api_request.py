@@ -2,7 +2,7 @@ from openai import OpenAI
 import time
 
 
-def completion(model, messages, max_try=3, prt=False):
+def completion(model, messages, temperature=0.7, top_p=0.8, max_try=3, prt=False):
     client = OpenAI(
         base_url='https://xiaoai.plus/v1',
         api_key='sk-i7hr97aad1rZEWEaC875D23a433d41458eD997498920FcA8'
@@ -17,7 +17,9 @@ def completion(model, messages, max_try=3, prt=False):
         try:
             response = client.chat.completions.create(
                 model=model,
-                messages=messages
+                messages=messages,
+                temperature=temperature,
+                top_p=top_p
             )
             message = response.choices[0].message.content
             if prt:
@@ -31,7 +33,7 @@ def completion(model, messages, max_try=3, prt=False):
     return message
 
 
-def completion_json(model, messages, schema, max_try=3, prt=False):
+def completion_json(model, messages, schema, temperature=0.8, max_try=3, prt=False):
     client = OpenAI(
         base_url='https://xiaoai.plus/v1',
         api_key='sk-i7hr97aad1rZEWEaC875D23a433d41458eD997498920FcA8'
@@ -43,6 +45,7 @@ def completion_json(model, messages, schema, max_try=3, prt=False):
             response = client.chat.completions.parse(
                 model=model,
                 messages=messages,
+                temperature=temperature,
                 response_format=schema,
             )
             message = response.choices[0].message.parsed

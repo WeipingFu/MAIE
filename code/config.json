@@ -22,13 +22,14 @@
         "model_name": "qwen3-8b",
         "model_path": "/autodl-fs/data/pretrained_model/qwen3-8b/",
         "tokenizer_path": "/autodl-fs/data/pretrained_model/qwen3-8b/",
-        "gpu_memory": 0.45,
+        "mode": "offline",
+        "gpu_memory": 0.4,
         "enable_lora": true,
         "base_url": "http://localhost:8000/v1",
         "api_key": "empty"
     },
     "planner": {
-        "lora_path": "/autodl-fs/data/maie/model/planner-sft-qwen3-8b",
+        "lora_path": "",
         "temperature": 0.0,
         "plan_prompt_path": "prompts/plan.txt",
         "revise_prompt_path": "prompts/plan-revise.txt",

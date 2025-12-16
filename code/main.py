@@ -51,7 +51,7 @@ def normalize_score(source_min, source_max, target_min, target_max, raw_score):
     return score
 
 # aggregate judge results
-def aggregate_final_result(plan_json, judge_results, eval_mode=None, target_min=1.0, target_max=5.0):
+def aggregate_final_result(plan_json, judge_results, eval_mode=None, allow_tie=True, target_min=1.0, target_max=5.0):
     """
     Aggregate final results based on evaluation mode.
     - If mode == "pointwise": weighted average of scores.
@@ -109,12 +109,15 @@ def aggregate_final_result(plan_json, judge_results, eval_mode=None, target_min=
             "response 1":"model_a", "response 2":"model_b", 
             "model 1":"model_a", "model 2":"model_b"  
         }
+
         weight_sum = 0.0
+        valid_dims_info = []
 
         for dim in dims:
             name = dim["name"]
             weight = float(dim.get("weight", 0.2))
             result_json = judge_results.get(name, None)
+            original_weight = weight
             # print(result_json)
             try:
                 judgement = result_json.get("judgement", "").strip().lower()
@@ -124,29 +127,46 @@ def aggregate_final_result(plan_json, judge_results, eval_mode=None, target_min=
             if judgement == "tie":
                 response_scores["model_a"] += weight / 2
                 response_scores["model_b"] += weight / 2
-            elif judgement in list(mapping.keys()):
+            elif judgement in mapping:
                 response_scores[mapping[judgement]] += weight
             else:
                 weight = 0.0
             print(f'Dimension: {name}, Weight: {weight}, Judgement: {judgement}')
             weight_sum += weight
             detailed_scores[name] = {"weight": weight, "judgement": judgement}
+            if original_weight > 0 and judgement is not None and judgement != "tie":
+                valid_dims_info.append({
+                    "name": name, 
+                    "weight": original_weight,
+                    "judgement": judgement,
+                })
         
         if weight_sum > 0:
             response_scores = {k: v / weight_sum for k, v in response_scores.items()}
-        # print(f'response_scores:{response_scores} =====================================================')
+    
         if response_scores["model_a"] == 0 and response_scores["model_b"] == 0:
             final_judgement = None
+
         elif abs(response_scores["model_a"] - response_scores["model_b"]) < 1e-6:
             final_judgement = "tie"
+            # when tie is not allowed
+            if not allow_tie and len(valid_dims_info) > 0:
+                max_weight_dim = max(valid_dims_info, key=lambda x: x['weight'])
+                if max_weight_dim['judgement'] in mapping:
+                    final_judgement = mapping[max_weight_dim['judgement']]
+
         elif response_scores["model_a"] > response_scores["model_b"]:
             final_judgement = "model_a"
+
         else:
             final_judgement = "model_b"
+
         print(f'Final Judgement: {final_judgement}')
         return final_judgement
+    
     else:
         raise ValueError(f"Unknown evaluation mode: {eval_mode}")
+
 
 async def plan_critic_collaboration(task, model_responses, eval_mode, convs, criteria_list, original_evaluation_plan, critic_round):
     print('--------------------Start Planner-Critic Collaboration--------------------')

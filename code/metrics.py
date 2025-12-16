@@ -6,8 +6,8 @@ from scipy.stats import pearsonr
 
 def compute_metrics_pariwise(df, label_col, pred_col):
     # map prediction with ground_truth
-    # df = df.dropna(subset=['judgement'])
-    # df = df[df['judgement']!='tie']
+    df = df.dropna(subset=['judgement'])
+    df = df[df['judgement']!='tie']
     print(len(df))
     gt_map = {
         "model_a": "model_a",
@@ -54,8 +54,15 @@ def compute_metrics_pointwise(df, label_col, pred_col):
 
 
 if __name__ == "__main__":
-    # df = pd.read_excel("/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/mt-bench/ablation/plan-critic-judge-chat-qwen3-8b-old.xlsx")
-    df = pd.DataFrame(load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/judgebench/ablation/plan-judge-chat-qwen3-8b.jsonl'))
+    df = pd.read_excel("/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/judgebench/vanilla_cot/vanilla-qwen3-8b.xlsx")
+    # df = pd.DataFrame(load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/judgebench/ablation/plan-critic-judge-chat-qwen3-8b.jsonl'))
+    temp_df = pd.DataFrame(load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/judgebench/plan-critic-judge-chat-gpt4o.jsonl'))
+    new_data = []
+    for idx, row in temp_df.iterrows():
+        temp = df[(df['question']==row['question'])&(df['response_A']==row['response_A'])&(df['response_B']==row['response_B'])]
+        if len(temp) > 0:
+            new_data.append(temp.iloc[0].to_dict())
+    df = pd.DataFrame(new_data)
     print(len(df[df['judgement'].isna()]), len(df[df['judgement']=='tie']))
     label_col = 'winner'
     pred_col = 'judgement'
