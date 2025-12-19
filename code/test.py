@@ -2,7 +2,7 @@ import asyncio
 import pandas as pd
 from tqdm import tqdm
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 from .main import run_pipeline          
 from .utils import load_jsonl, save_jsonl  

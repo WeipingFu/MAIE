@@ -53,7 +53,6 @@
         "judge_prompt_path": "prompts/judge.txt",
         "revise_prompt_path": "prompts/judge-revise.txt",
         "max_new_tokens": 512,
-        "thinking": false,
-        "batch_size": 2
+        "thinking": false
     }
 }

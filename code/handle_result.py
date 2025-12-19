@@ -84,7 +84,7 @@ def handle_vanilla(result_path, result_col, mode='pairwise', save_path=None):
 
 
 if __name__ == "__main__":
-    result_path = '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/judgebench/vanilla_cot/vanilla-gpt-4o.xlsx'
+    result_path = '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/flask_sum/vanilla-qwen3-8b.xlsx'
     result_col = 'vanilla_prompt'
     save_path = result_path.replace('.jsonl', '.xlsx')
-    handle_vanilla(result_path, result_col, mode='pairwise', save_path=save_path)
+    handle_vanilla(result_path, result_col, mode='pointwise', save_path=save_path)

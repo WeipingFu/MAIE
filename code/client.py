@@ -162,11 +162,11 @@ class ModelCientVLLM:
             else:
                 outputs = self.llm.generate(prompts, sampling_params)
             results = []
-            for out in outputs:
-                if not out.outputs:
+            for output in outputs:
+                if not output.outputs:
                     results.append("")
                 else:
-                    results.append(out.outputs[0].text.strip())
+                    results.append(output.outputs[0].text.strip())
         except Exception as e:
             print("[VLLM-OFFLINE-BATCH] generate failed:", e)
             return [""] * len(prompts)
@@ -175,4 +175,4 @@ class ModelCientVLLM:
 
 
 # user_client = ModelClient()
-user_client = ModelCientVLLM(mode='offline')
+user_client = ModelCientVLLM(mode=client_vllm_config.get("mode"))

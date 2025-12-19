@@ -1,6 +1,6 @@
 import random
 import copy
-from ..api_request import completion_json
+from ..api_request import completion, completion_json
 from pydantic import BaseModel, Field
 from typing import List, Literal, Optional
 from ..utils import read_text, load_jsonl, save_jsonl, clean_json
@@ -145,16 +145,20 @@ def get_critic_prompt(prompt_path, item):
     if isinstance(convs, np.ndarray):
         convs = convs.tolist()
     evaluation_plan = item['evaluation_plan']
-    if 'corrupted_plan' in item and item['corrupted_plan']:
-        if type(item['corrupted_plan']) is dict:
-            evaluation_plan = json.dumps(item['corrupted_plan'])
-        else:
-            evaluation_plan = item['corrupted_plan']
+    # if 'corrupted_plan' in item and item['corrupted_plan']:
+    #     if type(item['corrupted_plan']) is dict:
+    #         evaluation_plan = json.dumps(item['corrupted_plan'])
+    #     else:
+    #         evaluation_plan = item['corrupted_plan']
+    model_response = item['model_response']
+    if type(model_response) is str:
+        model_response = eval(model_response)
+
     template_vars = {
         "examples": '',
         "history": get_conv_history(convs),
         "task_description": item['question'],
-        "model_response": get_model_response(item['model_response']),
+        "model_response": get_model_response(model_response),
         "criteria": get_user_criteria(item['eval_type'], criteria_list=None),
         "evaluation_plan": evaluation_plan
     }
@@ -165,7 +169,7 @@ def get_critic_prompt(prompt_path, item):
 
 def build_critic_data_with_gpt(prompt_path, data_list, save_path, prt=False):
     results = []
-    for idx, item in tqdm(enumerate(data_list), total=len(data_list)):
+    for i, item in tqdm(enumerate(data_list), total=len(data_list)):
         content = get_critic_prompt(prompt_path, item)
         messages = [
             {'role': 'system', 'content': 'You are the Plan Critic. Your responsibility is to conduct a thorough review of the provided Evaluation Plan and give feedback.'},
@@ -175,19 +179,28 @@ def build_critic_data_with_gpt(prompt_path, data_list, save_path, prt=False):
             print('Messages:')
             print(messages)
         clean_json_str = ''
-        resp = completion_json('gpt-4o', messages, CriticResponse, max_try=3, prt=prt)
+        resp = completion("gpt-4o", messages, temperature=0.0, top_p=1.0, max_try=1, prt=prt)
+        # resp = completion_json(model, messages, PlannerResponse, temperature=0.8, max_try=3, prt=prt)
         if type(resp) is str:
             resp = clean_json(resp)
-        clean_json_str = resp.model_dump_json()
+        try:
+            parsed = CriticResponse.model_validate_json(resp)
+            clean_json_str = parsed.model_dump_json(indent=2)
+        except Exception as e:
+            print("Warning: CriticResponse validation failed, return empty json str. Exception:", e)
+        messages.append({'role':'assistant', 'content':clean_json_str})
         if prt:
             print('Response:')
             print(clean_json_str)
-        item['corrupted_plan'] = None
-        item['corruption_type'] = None
+        # item['corrupted_plan'] = None
+        # item['corruption_type'] = None
+        item['critic_messages'] = messages
         item['critic_result'] = clean_json_str
         results.append(item)
         if len(results) > 0 and len(results) % 2 == 0:
             save_jsonl(results, save_path)
+        if len(results) == 1:
+            print(messages)
     
     save_jsonl(results, save_path)
     print(f'Save {len(results)} data to {save_path}')
@@ -233,9 +246,10 @@ if __name__ == "__main__":
 
     # # Generate critic with gpt
     # prompt_path = 'prompts/critic.txt'
-    # data_list = load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/planner_result.jsonl')
-    # save_path = '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/critic_train_sft-2.jsonl'
-    # # data_list = [data_list[0]]
+    # data_list = load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/plan_candidate.jsonl')
+    # save_path = '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/plan_critic_gpt4o-1.jsonl'
+    # data_list = data_list[1623:]
+    # # print(type(eval(data_list[0]['model_response'])))
     # build_critic_data_with_gpt(
     #     prompt_path, 
     #     data_list, 
@@ -243,60 +257,61 @@ if __name__ == "__main__":
     #     prt=False
     # )
 
-    # append messages for train
-    data_list = load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/critic_train_sft-new.jsonl')
-    save_path = '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/critic_sft-new.jsonl'
-    append_critic_messages(
-        prompt_path='prompts/critic.txt', 
-        data_list=data_list, 
-        save_path=save_path, 
-        for_train=True, 
-        prt=True
-    )
+    # # append messages for train
+    # data_list = load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/critic_train_sft-new.jsonl')
+    # save_path = '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/critic_sft-new.jsonl'
+    # append_critic_messages(
+    #     prompt_path='prompts/critic.txt', 
+    #     data_list=data_list, 
+    #     save_path=save_path, 
+    #     for_train=True, 
+    #     prt=True
+    # )
 
-    # data = load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/critic_train_sft-new.jsonl')
-    # revise_items = []
-    # accept_items = []
-    # random.seed(42)
-    # pairwise, pointwise = 0, 0
-    # for item in data:
-    #     if item.get("eval_type") == 'pairwise':
-    #         pairwise += 1
-    #     elif item.get("eval_type") == 'pointwise':
-    #         pointwise += 1
-    #     critic_res = item.get('critic_result')
-    #     if isinstance(critic_res, str):
-    #         try:
-    #             critic_res = json.loads(critic_res)
-    #         except json.JSONDecodeError:
-    #             print(f"无法解析 JSON 字符串: {item.get('critic_result')}")
-    #             continue  
-
-    #     if not isinstance(critic_res, dict):
-    #          print(f"critic_result 格式错误，跳过: {item}")
-    #          continue
-
-    #     decision = critic_res.get('decision')
-        
-    #     item['critic_result'] = critic_res
-
-    #     if decision == 'revise':
-    #         revise_items.append(item)
-    #     elif decision == 'accept':
-    #         accept_items.append(item)
+    import random
+    random.seed(42)
+    accept, revise = [], []
+    data = load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/plan_critic_gpt4o.jsonl')
+    for item in data:
+        critic_result = json.loads(item['critic_result'])
+        decision = critic_result.get('decision').lower()
+        if decision == 'accept':
+            evaluation_plan = json.loads(item['evaluation_plan'])
+            if evaluation_plan.get('evaluation_mode') == item.get('eval_type'):
+                accept.append(item)
+        elif decision == 'revise':
+            revise.append(item)
+        else:
+            print(f'Unknown decision: {decision}')
+    print(len(accept), len(revise))
+  
+    # unique_tasks = list(set([x['question'] for x in accept]))
+    # total_size = len(unique_tasks)
+    # train_size = int(total_size * 0.9)
+    # train_tasks = random.sample(unique_tasks, k=train_size)
+    # eval_tasks = list(set(unique_tasks) - set(train_tasks))
+    # print(f"总任务数: {total_size}")
+    # print(f"训练集任务数 (90%): {len(train_tasks)}")
+    # print(f"验证集任务数 (10%): {len(eval_tasks)}")
     
-    # accept_limit = 1465
-    # if len(accept_items) > accept_limit:
-    #     sampled_accept_items = random.sample(accept_items, accept_limit)
-    # else:
-    #     # 如果 accept 项不够，则全部保留
-    #     sampled_accept_items = accept_items
-    #     print(f"实际 'accept' 项数量 ({len(accept_items)}) 少于目标 ({accept_limit})，已全部保留。")
-
-
-    # new_data = revise_items + sampled_accept_items
-    # print(len(revise_items), len(sampled_accept_items))
-    # random.shuffle(new_data)
-    # print(pairwise, pointwise)
-    # save_jsonl(new_data, '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/critic_train_sft-new.jsonl')
+    # train_data = [x for x in accept if x['question'] in train_tasks]
+    # eval_data = [x for x in accept if x['question'] in eval_tasks]
+    # print(f"总数据量: {len(accept)}")
+    # print(f"训练集数据量: {len(train_data)}")
+    # print(f"验证集数据量: {len(eval_data)}")
+    
+    # train_messages, eval_messages = [], []
+    # for item in train_data:
+    #     train_messages.append({
+    #         'messages': item['messages']
+    #     })
+    # for item in eval_data:
+    #     eval_messages.append({
+    #         'messages': item['messages']
+    #     })
+    
+    # save_jsonl(train_messages, '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/plan_sft_train.jsonl')
+    # save_jsonl(eval_messages, '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/plan_sft_eval.jsonl')
+    # print(train_messages[0]['messages'])
+    # print(eval_messages[0]['messages'])
     

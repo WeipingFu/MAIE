@@ -94,3 +94,25 @@ def clean_json(content):
     except json.JSONDecodeError:
         final_str_quotes_fixed = final_str.replace("'", '"')
         return final_str_quotes_fixed
+    
+
+def load_jsonl_safe(path):
+    data = []
+    with open(path, "r", encoding="utf-8", errors="ignore") as f:
+        for i, line in enumerate(f, 1):
+            if not line.strip():
+                continue
+            try:
+                data.append(json.loads(line))
+            except json.JSONDecodeError:
+                clean = (
+                    line
+                    .replace("\n", "\\n")
+                    .replace("\r", "\\r")
+                    .replace("\t", "\\t")
+                )
+                try:
+                    data.append(json.loads(clean))
+                except Exception:
+                    print(f"⚠️ drop bad line {i}")
+    return data

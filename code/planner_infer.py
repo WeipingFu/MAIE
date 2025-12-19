@@ -4,16 +4,11 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import pandas as pd
 import numpy as np
 from .utils import read_text, load_jsonl, save_jsonl, clean_json
-# from .agents.PlanAgent import UserPrompt, PlannerResponse
 from pydantic import BaseModel, Field
 from typing import List, Literal, Optional
 from jinja2 import Template
 from vllm import LLM, SamplingParams
 from vllm.lora.request import LoRARequest
-# from swift.llm import (
-#     PtEngine, RequestConfig, safe_snapshot_download, get_model_tokenizer, get_template, InferRequest, BaseArguments
-# )
-# from swift.tuners import Swift
 
 
 # --- JudgeAgent Details ---
@@ -122,15 +117,11 @@ class UserPrompt:
 
 
 
-def plan_infer(model, tokenizer, lora_path, data_path, save_path):
+def plan_infer(model, tokenizer, lora_path, data_path, save_path, sample_count=3):
     data = load_jsonl(data_path)
     user_prompt = UserPrompt(mode='plan')
-    
-    # template_type = template_type or model.model_meta.template
-    # template = get_template(template_type, tokenizer)
-    # engine = PtEngine.from_model_template(model, template, max_batch_size=8)
-    # request_config = RequestConfig(max_tokens=2048, temperature=0)
 
+    # add infer requests
     infer_requests = []
     for idx, item in enumerate(data):
         convs = item['conversations']
@@ -156,17 +147,15 @@ def plan_infer(model, tokenizer, lora_path, data_path, save_path):
             add_generation_prompt=True,
             enable_thinking=False
         )
-        infer_requests.append(prompt)    
-        # infer_requests.append(InferRequest(messages=[
-        #     {'role': 'system', 'content': 'You are the Planning Agent in a multi-agent system. Your function is to design a detailed, structured evaluation plan for the given instance input. If the input contains revision feedback, revise the existing plan accordingly.'},
-        #     {'role': 'user', 'content': content}]
-        # ))
-    
+        for i in range(sample_count):
+            infer_requests.append(prompt)    
+
+    # batch generate plans
     sampling_params = SamplingParams(
-        temperature=0.0,
+        temperature=0.7,
+        top_p=0.8,
         max_tokens=2048
     )
-    # resp_list = engine.infer(infer_requests, request_config)
     outputs = model.generate(
         infer_requests, 
         sampling_params, 
@@ -175,48 +164,34 @@ def plan_infer(model, tokenizer, lora_path, data_path, save_path):
     print(len(outputs))
     results = []
     for idx, output in enumerate(outputs):
-        # query = infer_requests[idx].messages[0]['content']
-        # eval_plan = resp.choices[0].message.content
         eval_plan = output.outputs[0].text.strip()
         eval_plan = clean_json(eval_plan)
-        # try:
-        #     parsed = PlannerResponse.model_validate_json(eval_plan)
-        #     clean_json_str = parsed.model_dump_json(indent=2)
-        # except Exception as e:
-        #     print("Warning: PlannerResponse validation failed. Exception:", e)
-        #     clean_json_str = ''
+        try:
+            parsed = PlannerResponse.model_validate_json(eval_plan)
+            clean_json_str = parsed.model_dump_json(indent=2)
+            one = {k:v for k,v in data[idx].items()}
+            one['evaluation_plan'] = clean_json_str
+            results.append(one)
+        except Exception as e:
+            # print("Warning: PlannerResponse validation failed. Exception:", e)
+            clean_json_str = ''
 
-        # if not clean_json_str:
-        one = {k:v for k,v in data[idx].items()}
-        # one['query'] = query
-        one['evaluation_plan'] = eval_plan
-        results.append(one)
-    
     save_jsonl(results, save_path)
 
 
 
 if __name__ == "__main__":
     model_path = '/autodl-fs/data/pretrained_model/qwen3-8b' 
-    lora_path = "/autodl-fs/data/maie/model/planner-sft-qwen3-8b"
+    lora_path = "/autodl-fs/data/maie/model/planner/sft/checkpoint-29"
     model = LLM(
         model=model_path,
         tokenizer=model_path,
         enable_lora=True, 
         dtype="bfloat16",
-        gpu_memory_utilization=0.9
+        gpu_memory_utilization=0.5
     )
     tokenizer = model.get_tokenizer()
-    # model, tokenizer = get_model_tokenizer(model)
-    # lora_checkpoint = safe_snapshot_download('/autodl-fs/data/maie/model/planner-sft-qwen3-8b') 
-    # if lora_checkpoint is not None:
-    #     model = Swift.from_pretrained(model, lora_checkpoint)
-    # args = BaseArguments.from_pretrained(lora_checkpoint)
-    # print(f'args.model: {args.model}')
-    # print(f'args.model_type: {args.model_type}')
-    # print(f'args.template_type: {args.template}')
-    # print(f'args.default_system: {args.system}')
 
-    data_path = '/autodl-fs/data/maie/data/for_planner.jsonl'
-    save_path = '/autodl-fs/data/maie/data/planner_result.jsonl'
+    data_path = '/autodl-fs/data/maie/data/for_planner-1k.jsonl'
+    save_path = '/autodl-fs/data/maie/data/planner_v0_result_1.jsonl'
     plan_infer(model, tokenizer, lora_path, data_path, save_path)

@@ -7,12 +7,12 @@ from pydantic import BaseModel, Field
 from jinja2 import Template
 from ..utils import load_json, read_text, clean_json
 # from ..client_llamacpp import client_config, user_client
-from ..client import user_client
+from ..client import client_config, user_client
 # from ..client import ModelCientVLLM
 import json
 
 judge_config = load_json("./config.json").get("judge")
-
+print(f'Judge Lora Path: {judge_config.get("lora_path")}')
 
 # --- Format of Judge Response ---
 class JudgeResponse(BaseModel):
@@ -51,10 +51,10 @@ class UserPrompt:
             example_str = '\n\n'.join(['[Start of Example {}]\n{}\n[End of Example {}]'.format(i+1, ex, i+1) for i,ex in enumerate(examples)]) + '-'*40
         return example_str
     
-    def get_dependency_results(self, dependency_result_dict):
+    def get_dependency_results(self, dependency_results_dict):
         dependency_results = ''
-        if dependency_result_dict and len(dependency_result_dict) > 0:
-            dependency_results = '\n\n'.join([f'[Result of Dimension {key}]\n{result}' for key, result in dependency_result_dict.items()])
+        if dependency_results_dict and len(dependency_results_dict) > 0:
+            dependency_results = '\n\n'.join([f'[Result of Dimension {key}]\n{result}' for key, result in dependency_results_dict.items()])
         return dependency_results
     
     def get_model_response(self, model_responses):
@@ -117,42 +117,60 @@ class JudgeAgent(BaseChatAgent):
 
     async def on_messages(self, messages: Sequence[BaseChatMessage], cancellation_token: CancellationToken) -> Response:
         runtime_payload = messages[-1].content
-        task = runtime_payload.task
-        model_responses = runtime_payload.model_responses
-        dimension_plan = runtime_payload.dimension_plan
-        first_judgement = runtime_payload.first_judgement
-        dependency_result_dict = runtime_payload.dependency_result_dict
-        eval_mode = runtime_payload.eval_mode
-        convs = runtime_payload.convs
-        example_paths = runtime_payload.example_paths
+        # task = runtime_payload.task
+        # model_responses = runtime_payload.model_responses
+        # dimension_plan = runtime_payload.dimension_plan
+        # first_judgement = runtime_payload.first_judgement
+        # dependency_results_dict = runtime_payload.dependency_results_dict
+        # eval_mode = runtime_payload.eval_mode
+        # convs = runtime_payload.convs
+        # example_paths = runtime_payload.example_paths
+        input_list = runtime_payload.inputs
         # print(dimension_plan)
-        print(f"JudgeAgent is working, Dimension is {dimension_plan.get('name')}")
-        content = self._user_prompt.generate_user_prompt(
-            task, model_responses, dimension_plan, first_judgement,
-            dependency_result_dict, eval_mode, convs, example_paths)
-       
-        # Call the LLM
-        messages = [
-            {'role': 'system', 'content': self._system_message},
-            {'role': 'user', 'content': content}
-        ]
-        result = await self._model_client.call(
-            messages,
+        dimension_names = [x.dimension_plan.get('name') for x in input_list]
+        print(f"JudgeAgent is working, Dimensions are {', '.join(dimension_names)}")
+        messages_list = []
+        for input in input_list:
+            content = self._user_prompt.generate_user_prompt(
+                task=input.task, 
+                model_responses=input.model_responses, 
+                dimension_plan=input.dimension_plan, 
+                first_judgement=input.first_judgement,
+                dependency_results_dict=input.dependency_results_dict, 
+                eval_mode=input.eval_mode, 
+                convs=input.convs, 
+                example_paths=input.example_paths
+            )
+            messages = [
+                {'role': 'system', 'content': self._system_message},
+                {'role': 'user', 'content': content}
+            ]
+            messages_list.append(messages)
+
+        # Call the LLM (batch)
+        results = await self._model_client.call_offline_batch(
+            messages_list,
             lora_path=judge_config.get("lora_path", ""),
             temperature=judge_config.get("temperature", 0.0),
-            max_new_tokens=judge_config.get("max_new_tokens"))
+            max_new_tokens=judge_config.get("max_new_tokens")
+        )
         
-        # validate LLM result
-        result = clean_json(result)
-        clean_json_str = '{}'
-        print(f'{self.name} Result: {result}\n')
-        try:
-            parsed = JudgeResponse.model_validate_json(result)
-            clean_json_str = parsed.model_dump_json(indent=2)
-        except Exception as e:
-            print("Warning: JudgeResponse validation failed, return empty json str. Exception:", e)
-            
-        response_message = TextMessage(content=clean_json_str, source=self.name)
+        # validate LLM results
+        dimension_result = {k:None for k in dimension_names}
+        for idx, result in enumerate(results):
+            if result:
+                result = clean_json(result)
+                # print(f'{dimension_names[idx]} Result: {result}\n')
+                try:
+                    parsed = JudgeResponse.model_validate_json(result)
+                    clean_json_str = parsed.model_dump_json(indent=2)
+                    # print('clean_json_str', clean_json_str)
+                    dimension_result[dimension_names[idx]] = clean_json_str
+                except Exception as e:
+                    print(f"[{dimension_names[idx]}] Warning: JudgeResponse validation failed, return empty json str. Exception: {e}")
+
+        dimension_result_str = json.dumps(dimension_result)
+        response_message = TextMessage(content=dimension_result_str, source=self.name)
         return Response(chat_message=response_message)
 
     async def on_reset(self, cancellation_token: CancellationToken) -> None:

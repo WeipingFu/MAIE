@@ -147,26 +147,19 @@ def apply_one(prompt_path, model, task, model_responses, eval_mode, convs, prt=F
 def apply_batch():
     import random
     model = 'gpt-4o'
-    data = pd.read_excel('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/plan_source.xlsx')
-    save_path = '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/plan_candidate-1.jsonl'
+    data = load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/task-1000.jsonl')
+    save_path = '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/plan_candidate.jsonl'
     prompt_path = 'prompts/plan.txt'
-    print(f'{len(data["question"].unique())} unique questions for plan, including task types: {data["category"].unique()}')
-    data = data.iloc[513:]
-    data = data.fillna('')
+
+    data = data[0:]
     new_data = []
     sample_count = 3
-    for idx, row in tqdm(data.iterrows(), total=len(data)):
+    for idx, row in tqdm(enumerate(data), total=len(data)):
         try:
             convs = row['conversations']
-            if isinstance(convs, np.ndarray):
+            if convs and isinstance(convs, np.ndarray):
                 convs = convs.tolist()
-            if convs and type(convs) is str:
-                convs = eval(convs)
-            # print(convs)
             model_responses = row['model_response']
-            if type(model_responses) is str:
-                model_responses = eval(model_responses)
-
             for i in range(sample_count):
                 messages, eval_plan = apply_one(
                     prompt_path,
@@ -177,14 +170,14 @@ def apply_batch():
                     convs=convs,
                     prt=False
                 )
-                item = row.to_dict()
-                item['messages'] = messages
-                item['evaluation_plan'] = eval_plan
+                # item = row.to_dict()
+                row['messages'] = messages
+                row['evaluation_plan'] = eval_plan
                 #  print('evaluation_plan', eval_plan, type(eval_plan))
-                for key, v in item.items():
+                for key, v in row.items():
                     if isinstance(v, np.ndarray):
-                        item[key] = v.tolist()
-                new_data.append(item)
+                        row[key] = v.tolist()
+                new_data.append(row)
                 if len(new_data) > 0 and len(new_data) % 3 == 0:
                     save_jsonl(new_data, save_path)
         except Exception as e:
@@ -349,20 +342,69 @@ def filter_planner_data(plan):
 
 
 if __name__ == "__main__":
-    apply_batch()
+    # apply_batch()
 
-
-    # data = load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/plan_train_sft.jsonl')
-    # print(f'Before filter, data count = {len(data)}')
-    # task_types = set([json.loads(x['evaluation_plan'])['task_type'] for x in data])
-    # print(task_types)
-    # filtered_data, failed_data = [], []
+    # import random
+    # random.seed(42)
+    # accept, revise = [], []
+    # data = load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/plan_critic_gpt4o.jsonl')
     # for item in data:
-    #     plan = json.loads(item['evaluation_plan'])
-    #     is_ok = filter_planner_data(plan)
-    #     if is_ok:
-    #         filtered_data.append(item)
+    #     critic_result = json.loads(item['critic_result'])
+    #     decision = critic_result.get('decision').lower()
+    #     if decision == 'accept':
+    #         evaluation_plan = json.loads(item['evaluation_plan'])
+    #         if evaluation_plan.get('evaluation_mode') == item.get('eval_type'):
+    #             accept.append(item)
+    #             print(evaluation_plan.get('evaluation_mode'), len(item.get('model_response')))
+    #     elif decision == 'revise':
+    #         revise.append(item)
     #     else:
-    #         failed_data.append(item)
-    # print(f'After filter, data count = {len(filtered_data)}')
-    # save_jsonl(failed_data, '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/plan_failed.jsonl')
+    #         print(f'Unknown decision: {decision}')
+    # print(len(accept), len(revise))
+  
+    # unique_tasks = list(set([x['question'] for x in accept]))
+    # total_size = len(unique_tasks)
+    # train_size = int(total_size * 0.9)
+    # train_tasks = random.sample(unique_tasks, k=train_size)
+    # eval_tasks = list(set(unique_tasks) - set(train_tasks))
+    # print(f"总任务数: {total_size}")
+    # print(f"训练集任务数 (90%): {len(train_tasks)}")
+    # print(f"验证集任务数 (10%): {len(eval_tasks)}")
+
+    # train_data = [x for x in accept if x['question'] in train_tasks]
+    # eval_data = [x for x in accept if x['question'] in eval_tasks]
+    # print(f"总数据量: {len(accept)}")
+    # print(f"训练集数据量: {len(train_data)}")
+    # print(f"验证集数据量: {len(eval_data)}")
+    
+    # train_messages, eval_messages = [], []
+    # for item in train_data:
+    #     train_messages.append({
+    #         'messages': item['messages']
+    #     })
+    # for item in eval_data:
+    #     eval_messages.append({
+    #         'messages': item['messages']
+    #     })
+    
+    # save_jsonl(train_messages, '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/plan_sft_train.jsonl')
+    # save_jsonl(eval_messages, '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/plan_sft_eval.jsonl')
+    # print(train_messages[0]['messages'])
+    # print(eval_messages[0]['messages'])
+
+    data = load_jsonl("/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/for_planner.jsonl")
+    used_data = load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/plan_critic_gpt4o.jsonl')
+    unique_questions = list(set([x['question'] for x in data]))
+    used_questions = list(set([x['question'] for x in used_data]))
+    unique_questions = [x for x in unique_questions if x not in used_questions]
+    print(len(unique_questions))
+    import random
+    random.seed(42)
+    questions = random.sample(unique_questions, 1000)
+    new_data = []
+    for question in questions:
+        one_item = [x for x in data if x['question']==question][0]
+        new_data.append(one_item)
+    for item in new_data:
+        print(item['eval_type'], len(item['model_response']), item['source'], item['category'])
+    save_jsonl(new_data, '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/for_planner-1k.jsonl')
