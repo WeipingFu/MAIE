@@ -336,7 +336,6 @@ async def run_pipeline(task, model_responses, eval_mode=None, convs=None, criter
     # 3.2. If enable judge chat, then start related judges' group chat
     if judge_chat:
         print('--------------------Start Judge Chat--------------------')
-        judge_revise_tasks = []
         revise_judge = JudgeAgent(name="ReviseJudge", mode='revise')
         # Add judge chat task if there are dependencies
         # If depend is 'all', all judge chat with each other
