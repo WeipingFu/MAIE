@@ -6,8 +6,8 @@ from autogen_core import CancellationToken
 from pydantic import BaseModel, Field
 from jinja2 import Template
 
-from ..utils import load_json, read_text, clean_json
-from ..client import user_client
+from code.utils import load_json, read_text, clean_json
+from code.client import user_client
 # from ..client import ModelCientVLLM
 
 critic_config = load_json("./config.json").get("critic")

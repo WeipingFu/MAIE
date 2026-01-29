@@ -4,8 +4,8 @@ from tqdm import tqdm
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
-from .main import run_pipeline          
-from .utils import load_jsonl, save_jsonl  
+from code.main import run_pipeline          
+from code.utils import load_jsonl, save_jsonl  
 
 def save_results(data, output_path):
     if output_path.endswith(".xlsx"):

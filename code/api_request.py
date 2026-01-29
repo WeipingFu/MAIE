@@ -4,14 +4,9 @@ import time
 
 def completion(model, messages, temperature=0.7, top_p=0.8, max_try=3, prt=False):
     client = OpenAI(
-        base_url='https://xiaoai.plus/v1',
-        api_key='sk-i7hr97aad1rZEWEaC875D23a433d41458eD997498920FcA8'
-        # api_key='sk-cDJxrPQJSE16fpKWnDAtWyr9KUR3Tl4uRq8xufBgYBHcN1no'
+        base_url='',
+        api_key=''
     )
-    # client = OpenAI(
-    #     base_url='https://api.gptoai.top/v1',
-    #     api_key='sk-auk9uhNrfFzlRuLIJjccVgm1SYascQ6E6kZwzWDKmC9r8H6B'
-    # )
     message = ''
     for i in range(max_try):
         try:
@@ -35,9 +30,8 @@ def completion(model, messages, temperature=0.7, top_p=0.8, max_try=3, prt=False
 
 def completion_json(model, messages, schema, temperature=0.8, max_try=3, prt=False):
     client = OpenAI(
-        base_url='https://xiaoai.plus/v1',
-        api_key='sk-i7hr97aad1rZEWEaC875D23a433d41458eD997498920FcA8'
-        # api_key='sk-cDJxrPQJSE16fpKWnDAtWyr9KUR3Tl4uRq8xufBgYBHcN1no'
+        base_url='',
+        api_key=''
     )
     message = ''
     for i in range(max_try):

@@ -6,7 +6,7 @@
 
 which nvcc
 nvcc --version
-rm -rf /root/.cache/flashinfer/
+export PYTHONPATH=$PYTHONPATH:$(pwd)
 
 # grpo
 CUDA_VISIBLE_DEVICES=0,1 \

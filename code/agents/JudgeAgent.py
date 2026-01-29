@@ -5,9 +5,9 @@ from autogen_agentchat.messages import BaseChatMessage, TextMessage
 from autogen_core import CancellationToken
 from pydantic import BaseModel, Field
 from jinja2 import Template
-from ..utils import load_json, read_text, clean_json
+from code.utils import load_json, read_text, clean_json
 # from ..client_llamacpp import client_config, user_client
-from ..client import client_config, user_client
+from code.client import client_config, user_client
 # from ..client import ModelCientVLLM
 import json
 

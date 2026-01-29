@@ -1,14 +1,14 @@
 # from swift.llm.rl.reward import RewardFn
 from swift.plugin import ORM, orms
-from .agents.CriticAgent import CriticAgent
-from .agents.JudgeAgent import JudgeAgent
-from .agents.PlanAgent import PlannerResponse
+from code.agents.CriticAgent import CriticAgent
+from code.agents.JudgeAgent import JudgeAgent
+from code.agents.PlanAgent import PlannerResponse
 from autogen_agentchat.messages import StructuredMessage
-from .main import CriticInputMessage, JudgeInputMessage, run_judge, aggregate_final_result
+from code.main import CriticInputMessage, JudgeInputMessage, run_judge, aggregate_final_result
 from autogen_core import CancellationToken
-from .utils import clean_json, safe_load_json
+from code.utils import clean_json, safe_load_json
 from typing import List
-
+import asyncio
 
 
 class PlannerReward(ORM):
@@ -16,18 +16,22 @@ class PlannerReward(ORM):
         self.critic = CriticAgent(name="Critic")
         self.judge = JudgeAgent(name="Judge", mode="judge")
         self.revise_judge = JudgeAgent(name="ReviseJudge", mode="revise")
+        # try:
+        self.loop = asyncio.get_event_loop()
+        # except RuntimeError:
+        #     self.loop = asyncio.new_event_loop()
+        #     asyncio.set_event_loop(self.loop)
 
-
-    def judge_distance(pred, label, eval_mode, scale=9.0):
-        try:
-            if eval_mode == "pairwise":
-                return 0.0 if pred == label else 1.0
-            else:       # pointwise
-                pred = float(pred)
-                label = float(label)
-                return min(abs(pred - label) / scale, 1.0)
-        except Exception:
-            return 1.0
+    def judge_distance(self, pred, label, eval_mode, scale=9.0):
+        # try:
+        if eval_mode == "pairwise":
+            return 0.0 if pred == label else 1.0
+        else:       # pointwise
+            pred = float(pred)
+            label = float(label)
+            return min(abs(pred - label) / scale, 1.0)
+        # except Exception:
+        #     return 1.0
 
 
     async def run_critic(self, evaluation_plan_str, task, model_responses, eval_mode, convs):
@@ -56,7 +60,7 @@ class PlannerReward(ORM):
         return critic_feedback.get("decision", "") == "accept"
 
 
-    async def run_judge(self, evaluation_plan, task, model_responses, eval_mode, convs):
+    async def run_judge_once(self, evaluation_plan, task, model_responses, eval_mode, convs):
         dimensions = evaluation_plan.get("evaluation_dimensions", [])
         dimension_names = [d['name'] for d in dimensions]
 
@@ -103,67 +107,81 @@ class PlannerReward(ORM):
         return judge_results
 
 
-    async def __call__(self, completions, **kwargs):
+    def __call__(self, completions, **kwargs):
         """
         completions: List[dict], each dict contains rollout output, e.g. {"text": "..."}
         kwargs: batch-aligned dataset columns
         """
-        rewards = []
+        async def process_batch():
+            rewards = []
+            batch_size = len(completions)
 
-        batch_size = len(completions)
+            for i in range(batch_size):
+                completion = completions[i]
+                # print(completion)
+                try:
+                    evaluation_plan_str = clean_json(completion)
+                    evaluation_plan = PlannerResponse.model_validate_json(evaluation_plan_str)
+                    evaluation_plan = safe_load_json(evaluation_plan_str)
+                except Exception:
+                    # invalid format, reward = -2
+                    rewards.append(-2.0)
+                    continue
 
-        for i in range(batch_size):
-            completion = completions[i]
-            # ---------- Format Check (Early Exit) ----------
-            try:
-                evaluation_plan_str = clean_json(completion["text"])
-                evaluation_plan = PlannerResponse.model_validate_json(evaluation_plan_str)
-            except Exception:
-                # invalid format, reward = -2
-                rewards.append(-2.0)
-                continue
+                task = kwargs["task"][i]
+                label = kwargs["label"][i]
+                vanilla = kwargs["base_judgement"][i]
+                model_responses = kwargs["model_responses"][i]
+                eval_mode = kwargs["eval_mode"][i]
+                convs = kwargs["convs"][i]
+                reward_weights = kwargs["reward_weights"][i]
+                
+                # ---------- Step 1: Critic ----------
+                critic_accept = await self.run_critic(
+                    evaluation_plan_str, task, model_responses, eval_mode, convs
+                )
+                λ_c = reward_weights.get("λ_c", 0.1)
+                penalty = -λ_c if not critic_accept else 0.0
 
-            task = kwargs["task"][i]
-            label = kwargs["label"][i]
-            vanilla = kwargs["base_judgement"][i]
-            model_responses = kwargs["model_responses"][i]
-            eval_mode = kwargs["eval_mode"][i]
-            convs = kwargs["convs"][i]
-            reward_weights = kwargs["reward_weights"][i]
-            
-            # ---------- Step 1: Critic ----------
-            critic_accept = await self.run_critic(
-                evaluation_plan_str, task, model_responses, eval_mode, convs
-            )
-            λ_c = reward_weights.get("λ_c", 0.1)
-            penalty = -λ_c if not critic_accept else 0.0
+                # ---------- Step 2: Judge ----------
+                judge_results = await self.run_judge_once(evaluation_plan, task, model_responses, eval_mode, convs)
+                final_judgement = aggregate_final_result(
+                    evaluation_plan,
+                    judge_results,
+                    eval_mode=eval_mode,
+                    allow_tie=True,
+                    target_min=1.0,
+                    target_max=10.0
+                )
 
-            # ---------- Step 2: Judge ----------
-            judge_results = await run_judge(evaluation_plan, task, model_responses, eval_mode, convs)
-            final_judgement = aggregate_final_result(
-                evaluation_plan,
-                judge_results,
-                eval_mode=eval_mode,
-                allow_tie=False,
-                target_min=1.0,
-                target_max=10.0
-            )
+                # ---------- Reward ----------
+                d_judge = self.judge_distance(final_judgement, label, eval_mode)
+                d_vanilla = self.judge_distance(vanilla, label, eval_mode)
+                delta = d_vanilla - d_judge      
 
-            # ---------- Reward ----------
-            d_judge = self.judge_distance(final_judgement, label, eval_mode)
-            d_vanilla = self.judge_distance(vanilla, label, eval_mode)
-            delta = d_vanilla - d_judge      
-            print(f'Label: {label}, Judgement: {final_judgement}, Vanilla: {vanilla}, Distance_Judge: {d_judge}, Distance_Vanilla: {d_vanilla}, Delta: {delta}')
+                alpha = reward_weights.get('alpha', 1.0)      # absolute correctness weight
+                beta = reward_weights.get('beta', 1.0)        # relative improvement weight
+                R = reward_weights.get('R', 2.0)
+                r_abs = 1.0 - 2.0 * d_judge  
+                judge_reward = max(-R, min(R, alpha * r_abs + beta * delta))      # [-2, 2]
+                final_reward = judge_reward + penalty
+                print(f'Label: {label}, Judgement: {final_judgement}, Base_judgement: {vanilla}, Distance_Judge: {d_judge}, Distance_Vanilla: {d_vanilla}, Delta: {delta}, Judge_reward: {judge_reward}, Penalty: {penalty}, Final_reward: {final_reward}')
 
-            alpha = reward_weights.get('alpha', 1.0)      # absolute correctness weight
-            beta = reward_weights.get('beta', 1.0)        # relative improvement weight
-            R = reward_weights.get('R', 2.0)
-            r_abs = 1.0 - 2.0 * d_judge  
-            judge_reward = max(-R, min(R, alpha * r_abs + beta * delta))      # [-2, 2]
+                rewards.append(final_reward)
 
-            rewards.append(judge_reward + penalty)
+            return rewards
+        
 
-        return rewards
+        # try:
+        if self.loop.is_running():
+            import nest_asyncio
+            nest_asyncio.apply()
+            return self.loop.run_until_complete(process_batch())
+        else:
+            return self.loop.run_until_complete(process_batch())
+        # except Exception as e:
+        #     print(f"Error in Reward Bridge: {e}")
+        #     return [0.0] * len(completions)
 
 
 
