@@ -39,9 +39,10 @@ def compute_metrics_pariwise(df, label_col, pred_col, with_tie=True):
 
 
 def compute_metrics_pointwise(df, label_col, pred_col):
-    notdf = df[(df[pred_col] < 1) | (df[pred_col] > 5) | (df[pred_col].isna())]
+    notdf = df[(df[pred_col] < 1.0) | (df[pred_col] > 5.1) | (df[pred_col].isna())]
     print(notdf)
-    # df = df.dropna(subset=[pred_col])
+    df = df.dropna(subset=[pred_col])
+    df = df[(df[pred_col] >= 1.0) & (df[pred_col] <= 5.1)]
     df[label_col] = pd.to_numeric(df[label_col], errors='coerce')
     df[pred_col] = pd.to_numeric(df[pred_col], errors='coerce')
     # df = df[(df[pred_col] >= 1) & (df[pred_col] <= 5)]
@@ -137,8 +138,8 @@ def load_multi_line_json_items(path):
 
 
 if __name__ == "__main__":
-    # df = pd.read_excel("/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/mt-bench/judgelm-mtbench.xlsx")
-    # df = pd.DataFrame(load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/judgebench/plan-v0-critic-judge-chat.jsonl'))
+    # # df = pd.read_excel("/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/mt-bench/plan-critic-judge-all-chat-qwen3-8b.xlsx")
+    # df = pd.DataFrame(load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/rewardbench/plan-critic-judge-all-chat-qwen3-8b.jsonl'))
     # # df = pd.DataFrame(load_multi_line_json_items('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/mt-bench/praetor-mt-bench/Praetor-mt-bench.jsonl'))
     # print(len(df[df['judgement'].isna()]), len(df[df['judgement']=='tie']))
     # label_col = 'winner'
@@ -147,12 +148,13 @@ if __name__ == "__main__":
     
 
     
-    df = pd.read_excel('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/flask/vanilla/vanilla-qwen3-8b-criteria.xlsx')
-    # df = pd.DataFrame(load_jsonl("/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/flask/plan-critic-judge-chat-qwen3-8b-criteria.jsonl"))
-    # df.to_excel('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/flask_sum/vanilla-qwen3-8b.xlsx', index=False)
-    label_col = 'avg_human_score'
-    pred_col = 'judgement'
-    compute_metrics_pointwise(df, label_col, pred_col)
+    # df = pd.read_excel('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/flask/vanilla/vanilla-qwen3-8b-criteria.xlsx')
+    # # df = pd.DataFrame(load_jsonl("/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/flask/plan-critic-judge-all-chat-qwen3-8b-criteria.jsonl"))
+    # # df.to_excel('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/flask_sum/vanilla-qwen3-8b.xlsx', index=False)
+    # label_col = 'avg_human_score'
+    # pred_col = 'judgement'
+    # compute_metrics_pointwise(df, label_col, pred_col)
+
 
     # data = load_jsonl("/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/flask/plan-critic-judge-chat-qwen3-8b-criteria.jsonl")
     # temp = load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/flask/plan-critic-judge-chat-qwen3-8b-criteria-1.jsonl')
@@ -167,3 +169,10 @@ if __name__ == "__main__":
     
     # print(len(new_data))
     # save_jsonl(new_data, '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/flask/plan-critic-judge-chat-qwen3-8b-criteria-new.jsonl')
+
+    data = load_jsonl('/Users/fuweiping/Downloads/train.jsonl')
+    language = ['php', 'c', 'bash', 'sql', 'python', 'go', 'javascript_html_css', 'english', 'typescript', 'c#', 'java', 'powershell', 'r', 'c++']
+    data = [x for x in data if x['language'] in language]
+    print(len(data))
+    print(len(set([x['context'][-1]['content'] for x in data])))
+    

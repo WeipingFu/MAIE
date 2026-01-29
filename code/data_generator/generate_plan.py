@@ -392,19 +392,170 @@ if __name__ == "__main__":
     # print(train_messages[0]['messages'])
     # print(eval_messages[0]['messages'])
 
-    data = load_jsonl("/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/for_planner.jsonl")
-    used_data = load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/plan_critic_gpt4o.jsonl')
-    unique_questions = list(set([x['question'] for x in data]))
-    used_questions = list(set([x['question'] for x in used_data]))
-    unique_questions = [x for x in unique_questions if x not in used_questions]
-    print(len(unique_questions))
-    import random
-    random.seed(42)
-    questions = random.sample(unique_questions, 1000)
+    # data = load_jsonl("/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/for_planner.jsonl")
+    # used_data = load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/plan_critic_gpt4o.jsonl')
+    # unique_questions = list(set([x['question'] for x in data]))
+    # used_questions = list(set([x['question'] for x in used_data]))
+    # unique_questions = [x for x in unique_questions if x not in used_questions]
+    # print(len(unique_questions))
+    # import random
+    # random.seed(42)
+    # questions = random.sample(unique_questions, 1000)
+    # new_data = []
+    # for question in questions:
+    #     one_item = [x for x in data if x['question']==question][0]
+    #     new_data.append(one_item)
+    # for item in new_data:
+    #     print(item['eval_type'], len(item['model_response']), item['source'], item['category'])
+    # save_jsonl(new_data, '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/for_planner-1k.jsonl')
+
+    # import random
+    # data = load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/for_planner.jsonl')
+    # ultra = [x for x in data if x['source'] == 'ultrafeedback']
+    # random.shuffle(ultra)
+    # scores = []
+    # for item in ultra:
+    #     scores += item['score']
+    # score_set = list(set(scores))
+    # print(len(score_set))
+    # chat = [x for x in data if x['source'] == 'chatbot-arena']
+    # pairwise = ultra[:600] + chat
+    # pointwise = ultra[600:]
+
+    # pairwise = random.sample(pairwise, 300)
+    # new_pairwise = []
+    # for item in pairwise:
+    #     label = 'tie' if item['label']=='tie (bothbad)' else item['label']
+    #     new_item = {
+    #         'task': item['question'],
+    #         'label': label,
+    #         'model_responses': item['model_response'],
+    #         'eval_mode': 'pairwise',
+    #         'convs': item['conversations'],
+    #         'source': item['source'],
+    #         'reward_weights': {
+    #             'λ_c': 0.2,
+    #             'alpha': 1.0,
+    #             'beta': 1.0,
+    #             'R': 2.0
+    #         }
+    #     }
+    #     new_pairwise.append(new_item)
+
+
+    # score_dict = {round(k, 1): 0 for k in np.arange(1.0, 10.5, 0.5)}
+    # uncovered_scores = set(score_dict.keys())
+    # MAX_TOTAL = 200
+    # random.shuffle(pointwise)
+    # priority_samples = []  # 存能覆盖新分值的项
+    # residual_samples = []  # 存重复分值的项
+    # # --- 第一阶段：识别贡献项 ---
+    # for item in pointwise:
+    #     # 注意：建议对数据里的分数也做 round(x, 1) 处理，防止浮点数精度问题导致 in 判断失败
+    #     s0 = round(float(item['score'][0]), 1)
+    #     s1 = round(float(item['score'][1]), 1)
+        
+    #     can_cover_0 = s0 in uncovered_scores
+    #     can_cover_1 = s1 in uncovered_scores
+        
+    #     # 逻辑：只要有一个分数能覆盖新分值，就把它列为“优先”
+    #     if can_cover_0 or can_cover_1:
+    #         # 如果 0 能覆盖而 1 不能，选 0；反之选 1；都能则随机
+    #         if can_cover_0 and not can_cover_1:
+    #             idx = 0
+    #         elif can_cover_1 and not can_cover_0:
+    #             idx = 1
+    #         else:
+    #             idx = 0 if random.random() <= 0.5 else 1
+                
+    #         chosen_score = round(float(item['score'][idx]), 1)
+    #         if chosen_score in uncovered_scores:
+    #             uncovered_scores.remove(chosen_score)
+            
+    #         # 暂时记录到优先列表
+    #         priority_samples.append((item, idx))
+    #     else:
+    #         # 分数已被覆盖过，存入候选池
+    #         residual_samples.append(item)
+    
+    # # --- 第二阶段：组装并限额 ---
+    # final_selected = []
+    # final_selected = priority_samples[:MAX_TOTAL]
+    # # 如果不满 MAX_TOTAL，从剩余项里补齐
+    # if len(final_selected) < MAX_TOTAL:
+    #     needed = MAX_TOTAL - len(final_selected)
+    #     additional_items = random.sample(residual_samples, min(needed, len(residual_samples)))
+    #     for item in additional_items:
+    #         idx = 0 if random.random() <= 0.5 else 1
+    #         final_selected.append((item, idx))
+
+    # new_pointwise = []
+    # for item, idx in final_selected:
+    #     chosen_score = float(item['score'][idx])
+    #     r_score = round(chosen_score, 1)
+    #     if r_score in score_dict:
+    #         score_dict[r_score] += 1
+    #     new_item = {
+    #         'task': item['question'],
+    #         'label': chosen_score,
+    #         'model_responses': [item['model_response'][idx]],
+    #         'eval_mode': 'pointwise',
+    #         'convs': item['conversations'],
+    #         'source': item['source'],
+    #         'reward_weights': {
+    #             'λ_c': 0.2,
+    #             'alpha': 1.0,
+    #             'beta': 1.0,
+    #             'R': 2.0
+    #         }
+    #     }
+    #     new_pointwise.append(new_item)
+    
+    # print(len(new_pairwise), len(new_pointwise))
+    # print(set([x['label'] for x in new_pairwise]), set([len(x['model_responses']) for x in new_pairwise]), set([x['eval_mode'] for x in new_pairwise]))
+    # print(set([x['label'] for x in new_pointwise]), len(set([x['label'] for x in new_pointwise])), set([len(x['model_responses']) for x in new_pointwise]), set([x['eval_mode'] for x in new_pointwise]), score_dict)
+
+    
+    # samples = new_pairwise + new_pointwise
+    # random.shuffle(samples)
+    # print(len(set([x['task'] for x in samples])))
+    # save_jsonl(samples, '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/grpo_r1.jsonl')
+
+    # data = load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/grpo_r1.jsonl')
+    # result = {k: [item[k] for item in data] for k in data[0]}
+    # for k, v in result.items():
+    #     print(k, len(v), v[0])
+    # label_list = [str(x) for x in result['label']]
+    # result['label'] = label_list
+
+    # import json
+    # with open('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/grpo_r1.json', 'w', encoding='utf-8') as f:
+    #     json.dump(result, f, ensure_ascii=False, indent=4)
+    # print(result['label'])
+
+    prompt_path = './prompts/plan.txt'
+    data_path = '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/grpo_r1.jsonl'
     new_data = []
-    for question in questions:
-        one_item = [x for x in data if x['question']==question][0]
-        new_data.append(one_item)
-    for item in new_data:
-        print(item['eval_type'], len(item['model_response']), item['source'], item['category'])
-    save_jsonl(new_data, '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/for_planner-1k.jsonl')
+    data = load_jsonl(data_path)
+    prompt = UserPrompt(prompt_path)
+    for item in data:
+        convs = item['convs']
+        if isinstance(convs, np.ndarray):
+            convs = convs.tolist()
+        content = prompt.generate_user_prompt(
+            task=item['task'], 
+            model_responses=item['model_responses'], 
+            eval_mode=item['eval_mode'],
+            convs=convs,
+            criteria_list=None,
+            example_paths=None,
+            prt=True
+        )
+        messages = [
+            {'role': 'system', 'content': 'You are the Planning Agent in a multi-agent system. Your function is to design a detailed, structured evaluation plan for the given instance input.'},
+            {'role': 'user', 'content': content}
+        ]
+        item['messages'] = messages
+        item['label'] = str(item['label'])
+        new_data.append(item)
+    save_jsonl(new_data, '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/grpo_r1-new.jsonl')

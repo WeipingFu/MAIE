@@ -1,3 +1,6 @@
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
 from .utils import load_json
 from transformers import (
     AutoModelForCausalLM, 

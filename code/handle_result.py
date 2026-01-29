@@ -71,7 +71,7 @@ def handle_vanilla(result_path, result_col, mode='pairwise', save_path=None):
             judgement = extract_vanilla_pairwise(row[result_col])
         else:
             judgement = extract_vanilla_pointwise(row[result_col])
-        row['judgement'] = judgement
+        row['vanilla_judgement'] = judgement
         new_data.append(row)
 
     # save results
@@ -84,7 +84,17 @@ def handle_vanilla(result_path, result_col, mode='pairwise', save_path=None):
 
 
 if __name__ == "__main__":
-    result_path = '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/flask/vanilla-qwen3-8b-criteria.xlsx'
-    result_col = 'vanilla_prompt'
-    save_path = result_path.replace('.jsonl', '.xlsx')
-    handle_vanilla(result_path, result_col, mode='pointwise', save_path=save_path)
+    # result_path = '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/result/feedbackbench/vanilla/vanilla-gpt-4o-criteria.xlsx'
+    # result_col = 'vanilla_prompt'
+    # save_path = result_path
+    # save_path = result_path.replace('.jsonl', '.xlsx')
+    # handle_vanilla(result_path, result_col, mode='pointwise', save_path=save_path)
+
+    data = load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/grpo_r1.jsonl')
+    temp = load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/grpo_r1-res.jsonl')
+    new_data = []
+    for item in data:
+        tt = [x for x in temp if x['task']==item['task'] and x['model_responses']==item['model_responses'] and x['label']==item['label']]
+        item['base_judgement'] = tt[0]['base_judgement']
+        new_data.append(item)
+    save_jsonl(new_data, '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/grpo_r1-new.jsonl')

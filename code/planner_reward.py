@@ -17,7 +17,8 @@ class PlannerReward(ORM):
         self.judge = JudgeAgent(name="Judge", mode="judge")
         self.revise_judge = JudgeAgent(name="ReviseJudge", mode="revise")
 
-    def judge_distance(pred, label, eval_mode, scale=4.0):
+
+    def judge_distance(pred, label, eval_mode, scale=9.0):
         try:
             if eval_mode == "pairwise":
                 return 0.0 if pred == label else 1.0
@@ -27,6 +28,7 @@ class PlannerReward(ORM):
                 return min(abs(pred - label) / scale, 1.0)
         except Exception:
             return 1.0
+
 
     async def run_critic(self, evaluation_plan_str, task, model_responses, eval_mode, convs):
         critic_user_message = StructuredMessage[CriticInputMessage](
@@ -123,7 +125,7 @@ class PlannerReward(ORM):
 
             task = kwargs["task"][i]
             label = kwargs["label"][i]
-            vanilla = kwargs["vanilla_prompt"][i]
+            vanilla = kwargs["base_judgement"][i]
             model_responses = kwargs["model_responses"][i]
             eval_mode = kwargs["eval_mode"][i]
             convs = kwargs["convs"][i]
@@ -133,7 +135,7 @@ class PlannerReward(ORM):
             critic_accept = await self.run_critic(
                 evaluation_plan_str, task, model_responses, eval_mode, convs
             )
-            λ_c = reward_weights.get("λ_c", 0.2)
+            λ_c = reward_weights.get("λ_c", 0.1)
             penalty = -λ_c if not critic_accept else 0.0
 
             # ---------- Step 2: Judge ----------
@@ -144,9 +146,9 @@ class PlannerReward(ORM):
                 eval_mode=eval_mode,
                 allow_tie=False,
                 target_min=1.0,
-                target_max=5.0
+                target_max=10.0
             )
-            
+
             # ---------- Reward ----------
             d_judge = self.judge_distance(final_judgement, label, eval_mode)
             d_vanilla = self.judge_distance(vanilla, label, eval_mode)

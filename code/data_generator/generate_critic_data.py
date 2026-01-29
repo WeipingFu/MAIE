@@ -270,53 +270,53 @@ if __name__ == "__main__":
     #     prt=True
     # )
 
-    import random
-    random.seed(42)
-    accept, revise = [], []
-    data = load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/plan_v1_critic_gpt4o.jsonl')
-    for item in data:
-        print(item['eval_type'], len(item['model_response']))
-        critic_result = json.loads(item['critic_result'])
-        decision = critic_result.get('decision').lower()
-        if decision == 'accept':
-            evaluation_plan = json.loads(item['evaluation_plan'])
-            if evaluation_plan.get('evaluation_mode') == item.get('eval_type'):
-                accept.append(item)
-        elif decision == 'revise':
-            revise.append(item)
-        else:
-            print(f'Unknown decision: {decision}')
-    print(len(accept), len(revise))
+    # import random
+    # random.seed(42)
+    # accept, revise = [], []
+    # data = load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/plan_v1_critic_gpt4o.jsonl')
+    # for item in data:
+    #     print(item['eval_type'], len(item['model_response']))
+    #     critic_result = json.loads(item['critic_result'])
+    #     decision = critic_result.get('decision').lower()
+    #     if decision == 'accept':
+    #         evaluation_plan = json.loads(item['evaluation_plan'])
+    #         if evaluation_plan.get('evaluation_mode') == item.get('eval_type'):
+    #             accept.append(item)
+    #     elif decision == 'revise':
+    #         revise.append(item)
+    #     else:
+    #         print(f'Unknown decision: {decision}')
+    # print(len(accept), len(revise))
 
-    accept = random.sample(accept, 1300)
-    revise = random.sample(revise, 1300)
-    all = accept + revise
-    random.shuffle(all)
+    # accept = random.sample(accept, 1300)
+    # revise = random.sample(revise, 1300)
+    # all = accept + revise
+    # random.shuffle(all)
 
-    unique_tasks = list(set([x['question'] for x in all]))
-    total_size = len(unique_tasks)
-    train_size = int(total_size * 0.9)
-    train_tasks = random.sample(unique_tasks, k=train_size)
-    eval_tasks = list(set(unique_tasks) - set(train_tasks))
-    print(f"总任务数: {total_size}")
-    print(f"训练集任务数 (90%): {len(train_tasks)}")
-    print(f"验证集任务数 (10%): {len(eval_tasks)}")
+    # unique_tasks = list(set([x['question'] for x in all]))
+    # total_size = len(unique_tasks)
+    # train_size = int(total_size * 0.9)
+    # train_tasks = random.sample(unique_tasks, k=train_size)
+    # eval_tasks = list(set(unique_tasks) - set(train_tasks))
+    # print(f"总任务数: {total_size}")
+    # print(f"训练集任务数 (90%): {len(train_tasks)}")
+    # print(f"验证集任务数 (10%): {len(eval_tasks)}")
     
-    train_data = [x for x in all if x['question'] in train_tasks]
-    eval_data = [x for x in all if x['question'] in eval_tasks]
-    print(f"总数据量: {len(all)}")
-    print(f"训练集数据量: {len(train_data)}")
-    print(f"验证集数据量: {len(eval_data)}")
+    # train_data = [x for x in all if x['question'] in train_tasks]
+    # eval_data = [x for x in all if x['question'] in eval_tasks]
+    # print(f"总数据量: {len(all)}")
+    # print(f"训练集数据量: {len(train_data)}")
+    # print(f"验证集数据量: {len(eval_data)}")
     
-    train_messages, eval_messages = [], []
-    for item in train_data:
-        train_messages.append({
-            'messages': item['messages']
-        })
-    for item in eval_data:
-        eval_messages.append({
-            'messages': item['messages']
-        })
+    # train_messages, eval_messages = [], []
+    # for item in train_data:
+    #     train_messages.append({
+    #         'messages': item['messages']
+    #     })
+    # for item in eval_data:
+    #     eval_messages.append({
+    #         'messages': item['messages']
+    #     })
     
     # save_jsonl(train_messages, '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/critic_sft_train.jsonl')
     # save_jsonl(eval_messages, '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/critic_sft_eval.jsonl')
@@ -345,3 +345,12 @@ if __name__ == "__main__":
     # for item in sample_data:
     #     print(item['eval_type'], len(item['model_response']))
     # save_jsonl(sample_data, '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/for_critic.jsonl')
+
+    data = load_jsonl('/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/grpo_r1 15.30.41.jsonl')
+    new_data = []
+    for item in data:
+        item['label'] = str(item['label'])
+        item['vanilla_judgement'] = str(item['vanilla_judgement'])
+        new_data.append(item)
+    random.shuffle(new_data)
+    save_jsonl(new_data, '/Users/fuweiping/个人空间/DR/工作站/llmeval/adaptive/data/grpo_r1.jsonl')

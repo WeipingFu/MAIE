@@ -1,35 +1,26 @@
-# start planner vllm 
-CUDA_VISIBLE_DEVICES=0 \
-swift rollout \
-    --model Qwen3-8b \
-    --adapters planner-sft \
-    --infer_backend 'vllm' \
-    --vllm_enable_lora true \
-    --host 127.0.0.1 \
-    --port 8000 \
-    --vllm_gpu_memory_utilization 0.9 \
-    --vllm_max_lora_rank 8 \
-    --temperature 1.0 \
-    # --top_p 0.8
+# export CUDA_HOME=/usr/local/cuda
+# export PATH=$CUDA_HOME/bin:$PATH
+# export CPATH=$CUDA_HOME/include
+# export LIBRARY_PATH=$CUDA_HOME/lib64
+# export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
 
-
-
+which nvcc
+nvcc --version
+rm -rf /root/.cache/flashinfer/
 
 # grpo
-CUDA_VISIBLE_DEVICES=1 \
+CUDA_VISIBLE_DEVICES=0,1 \
 swift rlhf \
     --rlhf_type grpo \
-    --model Qwen3-8b \
-    --adapters planner-sft \
-    --ref_adapters planner-sft \
+    --model /root/autodl-tmp/pretrained_model/qwen3-8b \
+    --adapters /root/autodl-tmp/maie/model/planner/checkpoint-87 \
+    --ref_adapters /root/autodl-tmp/maie/model/planner/checkpoint-87 \
     --train_type lora \
-    --external_plugins ../planner_reward.py \
-    --reward_funcs planner_reward_function format \
+    --external_plugins /root/autodl-tmp/maie/code/planner_reward.py \
+    --reward_funcs planner_reward_function \
     --use_vllm true \
-    --vllm_mode server \
-    --vllm_server_host 127.0.0.1 \
-    --vllm_server_port 8000 \
-    --dataset 'zouxuhong/Countdown-Tasks-3to4#50000' \
+    --vllm_mode colocate \
+    --dataset /root/autodl-tmp/maie/data/grpo_r1.jsonl \
     --load_from_cache_file true \
     --torch_dtype bfloat16 \
     --lora_rank 8 \
@@ -45,14 +36,21 @@ swift rlhf \
     --save_steps 100 \
     --save_total_limit 1 \
     --logging_steps 5 \
-    --output_dir output/GRPO_COUNTDOWN \
+    --output_dir /root/autodl-tmp/maie/model/planner/grpo \
     --warmup_ratio 0.05 \
     --dataloader_num_workers 4 \
     --num_generations 8 \
-    --temperature 0.7 \
-    --top_p 0.8 \
-    --deepspeed zero3 \
+    --temperature 1.0 \
     --log_completions true \
-    --report_to wandb \
     --beta 0.0 \
-    --num_iterations 1
+    --num_iterations 1 \
+    --deepspeed zero3 \
+    --sleep_level 1 \
+    --offload_optimizer true \
+    --offload_model true \
+    --vllm_gpu_memory_utilization 0.5 \
+    --vllm_max_lora_rank 8 \
+    --vllm_enable_lora true \
+    
+    # --vllm_server_host 127.0.0.1 \
+    # --vllm_server_port 8000 \
